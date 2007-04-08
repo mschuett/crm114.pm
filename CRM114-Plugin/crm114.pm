@@ -144,9 +144,9 @@ sub set_config {
 
 sub call_crm {
   my ($self, $status, $action) = @_;
-
   my $crm114_score = "0";
   my $crm114_status = "UNKNOWN";
+
   my $crm114_command = $self->{main}->{conf}->{crm114_command};
   my $crm114_remove_existing_spam_headers =
             $self->{main}->{conf}->{crm114_remove_existing_spam_headers};
@@ -229,10 +229,8 @@ sub call_crm {
 
 sub check_crm {
   my ($self, $status) = @_;
-  my $sa_score = "0";
 
   # Step 0: get options
-  #my $crm114_learn = $self->{main}->{conf}->{crm114_learn};
   my $crm114_staticscore_good =
           $self->{main}->{conf}->{crm114_staticscore_good};
   my $crm114_staticscore_unsure =
@@ -275,7 +273,7 @@ sub check_crm {
                       $crm114_status, $crm114_score);
     if ($crm114_dynscore) {
       # return dynamic score --> normalize CRM114-score to SA-score
-      $sa_score = $crm114_dynscore_factor * $crm114_score;
+      my $sa_score = $crm114_dynscore_factor * $crm114_score;
       for my $set (0..3) {
         $status->{conf}->{scoreset}->[$set]->{"CRM114_CHECK"} = 
                                               sprintf("%0.3f", $sa_score);
@@ -312,6 +310,24 @@ sub check_crm {
     }
   }
   return 0;
+}
+
+sub plugin_report {
+  my ($self, $options) = @_;
+
+  return unless $self->{razor2_available};
+  return if $self->{main}->{local_tests_only};
+  return unless $self->{main}->{conf}->{use_razor2};
+  return if $options->{report}->{options}->{dont_report_to_razor};
+
+  if ($self->razor2_access($options->{text}, 'report')) {
+    $options->{report}->{report_available} = 1;
+    info('reporter: spam reported to Razor');
+    $options->{report}->{report_return} = 1;
+  }
+  else {
+    info('reporter: could not report spam to Razor');
+  }
 }
 
 1;
