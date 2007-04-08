@@ -1,0 +1,55 @@
+# configuration for CRM 114 plugin
+
+loadplugin crm114 crm114.pm
+full      CRM114_CHECK  eval:check_crm()
+
+# this high priority is not necessary. but running late allows us
+# to compare the CRM score and the result of all previous SA tests
+#
+# 899 is chosen as an optimization because FuzzyOCR runs at 900
+# thus if CRM already yields a high SA score,
+# then FuzzyOCR will decide to skip its tests
+priority  CRM114_CHECK  899
+
+# add new header lines
+#add_header all CRM114-Version _CRM114VERSION_
+#add_header all CRM114-CacheID _CRM114CACHEID_
+add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
+
+# commandline to execute
+# default: crm mailreaver.crm
+crm114_command /usr/local/bin/crm -u /var/amavis/.crm114 mailreaver.crm
+
+# ignore existing X-Spam or X-Virus headers
+# if SpamAssassin is called by Amavis then use the same value as Amavis does.
+# that way a SA-check from Amavis and on from the command line both see the same
+# Headers
+# default: 0
+crm114_remove_existing_spam_headers 1
+crm114_remove_existing_virus_headers 1
+
+# dynamic score
+# values: 0 - returns subtest results 
+#         1 - returns a dynamic CRM score (default)
+crm114_dynscore 1
+
+# dynamic score normalization factor
+# CRM score have much higher absolute values and different signs than SA scores
+# (usual ham-scores are between 15 and 40, scores from -10 to 10 are undecided,
+# previously seen spam easily gets -200).
+# With dynamic scoring the SA score is calculated by: <CRM score> * crm114_dynscore_factor
+#
+# Notes: - this has to be a negative number!
+#        - the absolute value should be quite low (certainly <.3, probably <=.2),
+#          otherwise the returned score would override all other tests.
+# default: calculate factor so that CRM-score -40 yields the SA required spam threshold
+crm114_dynscore_factor -0.05
+
+# static scores
+# without dynamic scores these scores are used
+# default values are respectively -3, 0, 3 for good, unsure, spam
+crm114_staticscore_good   -3.0
+crm114_staticscore_unsure  0.0
+crm114_staticscore_spam    3.0
+
+#crm114_fulldebug 1
