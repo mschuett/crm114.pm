@@ -179,6 +179,7 @@ sub call_crm {
             #$tmpf, 1, $crm114_command, $crm114_option);
   #if (!$pid) { warn(sprintf("crm114: $!\n")); return; }
 
+  $status->enter_helper_run_mode();
   my $pid = open2(\*CRM_OUT, \*CRM_IN, $crm114_cmdline);
   dbg(sprintf("crm114: crm114_command run"));
   print CRM_IN $hdr;
@@ -221,7 +222,8 @@ sub call_crm {
   }
   close CRM_OUT;
   waitpid $pid, 0;
-
+  $status->leave_helper_run_mode();
+  
   dbg(sprintf("crm114: call_crm returns (%s, %s)",
                        $crm114_status, $crm114_score));
   return ($crm114_status, $crm114_score);
@@ -310,24 +312,6 @@ sub check_crm {
     }
   }
   return 0;
-}
-
-sub plugin_report {
-  my ($self, $options) = @_;
-
-  return unless $self->{razor2_available};
-  return if $self->{main}->{local_tests_only};
-  return unless $self->{main}->{conf}->{use_razor2};
-  return if $options->{report}->{options}->{dont_report_to_razor};
-
-  if ($self->razor2_access($options->{text}, 'report')) {
-    $options->{report}->{report_available} = 1;
-    info('reporter: spam reported to Razor');
-    $options->{report}->{report_return} = 1;
-  }
-  else {
-    info('reporter: could not report spam to Razor');
-  }
 }
 
 1;
