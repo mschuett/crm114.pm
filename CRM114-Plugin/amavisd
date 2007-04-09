@@ -792,7 +792,8 @@ BEGIN {
     Received X-Quarantine-ID X-Amavis-Alert X-Amavis-Hold X-Amavis-Modified
     X-Amavis-PenPals X-Amavis-OS-Fingerprint X-Amavis-PolicyBank
     X-Spam-Status X-Spam-Level X-Spam-Flag X-Spam-Score
-    X-Spam-Report X-Spam-Checker-Version X-Spam-Tests X-Spam-CRM114-Status
+    X-Spam-Report X-Spam-Checker-Version X-Spam-Tests
+    X-Spam-CRM114-Status X-Spam-CRM114-CacheID
     X-DSPAM-Signature X-DSPAM-Result
     X-DSPAM-Confidence X-DSPAM-Probability X-DSPAM-User X-DSPAM-Factors
   );
@@ -5016,10 +5017,12 @@ sub spam_summary    # SA summary of tests hit for standard body reports
   { my($self)=shift; !@_ ? $self->{spam_summary}:($self->{spam_summary}=shift)}
 sub autolearn_status
   { my($self)=shift; !@_ ? $self->{a_learn_stat}:($self->{a_learn_stat}=shift)}
-sub crm_status
-  { my($self)=shift; !@_ ? $self->{crm_status}  :($self->{crm_status}=shift)}
-sub crm_score
-  { my($self)=shift; !@_ ? $self->{crm_score}  :($self->{crm_score}=shift)}
+sub crm114_status
+  { my($self)=shift; !@_ ? $self->{crm114_status}  :($self->{crm114_status}=shift)}
+sub crm114_score
+  { my($self)=shift; !@_ ? $self->{crm114_score}  :($self->{crm114_score}=shift)}
+sub crm114_cacheid
+  { my($self)=shift; !@_ ? $self->{crm114_cacheid}  :($self->{crm114_cacheid}=shift)}
 
 # the following methods apply on a per-message level as well, summarizing
 # per-recipient information as far as possible
@@ -9111,7 +9114,7 @@ sub add_forwarding_header_edits_per_recip($$$$$$$$$) {
     # normalize
     $_ = $_?1:0  for ($do_tag_virus_checked, $do_tag_virus, $do_tag_banned,
                       $do_tag_badh, $do_tag, $do_tag2, $do_p0f, $is_local);
-    my($spam_level_bar, $full_spam_status, $crm_header);
+    my($spam_level_bar, $full_spam_status, $crm114_header);
     if ($is_local && ($do_tag || $do_tag2)) {  # prepare status and level bar
       # spam-related headers should _not_ be inserted for:
       #  - nonlocal recipients (outgoing mail), as a matter of courtesy
@@ -9140,7 +9143,7 @@ sub add_forwarding_header_edits_per_recip($$$$$$$$$) {
         join('', $blacklisted ? "BLACKLISTED\n " : (),
                  $whitelisted ? "WHITELISTED\n " : ()),
         $s);
-			$crm_header = sprintf("%s ( %s )", $msginfo->crm_status,$msginfo->crm_score);
+			$crm114_header = sprintf("%s ( %s )", $msginfo->crm114_status,$msginfo->crm114_score);
     }
     my($key) = join("\000", map {defined $_ ? $_ : ''} (
       $do_tag_virus_checked, $do_tag_virus, $do_tag_banned, $do_tag_badh,
@@ -9204,8 +9207,10 @@ sub add_forwarding_header_edits_per_recip($$$$$$$$$) {
              $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-Level')};
         $hdr_edits->add_header('X-Spam-Status', $full_spam_status, 1)
           if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-Status')};
-        $hdr_edits->add_header('X-Spam-CRM114-Status', $crm_header, 1)
+        $hdr_edits->add_header('X-Spam-CRM114-Status', $crm114_header, 1)
           if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-CRM114-Status')};
+        $hdr_edits->add_header('X-Spam-CRM114-CacheID', $crm114_cacheid, 1)
+          if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-CRM114-CacheID')};
       }
       if ($do_tag2 && $is_local) {
         $hdr_edits->add_header('X-Spam-Report', "\n".$msginfo->spam_report, 2)
@@ -16195,10 +16200,8 @@ sub call_spamassassin($$$) {
   my($spamassassin_obj) = $self->{'spamassassin_obj'};
   my($spam_level,$sa_tests,$spam_report,$spam_summary,$autolearn_status);
   my($fh) = $msginfo->mail_text;
-	our $crm_status;
-	our $crm_score;
-	local $crm_status;
-	local $crm_score;
+  our ($crm114_status,$crm114_score,$crm114_cacheid);
+  local ($crm114_status,$crm114_score,$crm114_cacheid);
   $which_section = 'SA msg read';
   # read mail into memory (horror!) in preparation for SpamAssassin
   $fh->seek(0,0) or die "Can't rewind mail file: $!";
@@ -16245,9 +16248,11 @@ sub call_spamassassin($$$) {
     # $spam_summary = $per_msg_status->get_tag('SUMMARY');
       $spam_report  = $per_msg_status->get_tag('REPORT');
 
+     $crm114_status   = $per_msg_status->get_tag('CRM114STATUS');
+     $crm114_score    = $per_msg_status->get_tag('CRM114SCORE');
+     $crm114_cacheid  = $per_msg_status->get_tag('CRM114CACHEID');
+
       #examples of obtaining additional information from SA:
-     $crm_status   = $per_msg_status->get_tag('CRM114STATUS');
-     $crm_score    = $per_msg_status->get_tag('CRM114SCORE');
     # my($rly_trusted)   = $per_msg_status->get_tag('RELAYSTRUSTED');
     # my($rly_untrusted) = $per_msg_status->get_tag('RELAYSUNTRUSTED');
     # my($rly_internal)  = $per_msg_status->get_tag('RELAYSINTERNAL');
@@ -16269,7 +16274,7 @@ sub call_spamassassin($$$) {
   umask($saved_umask);  # SA changes umask to 0077
 # section_time($which_section);
   if ($eval_stat ne '') { chomp($eval_stat); die $eval_stat }  # resignal
-  ($spam_level, $sa_tests, $spam_report, $spam_summary, $autolearn_status, $crm_status, $crm_score);
+  ($spam_level, $sa_tests, $spam_report, $spam_summary, $autolearn_status, $crm114_status, $crm114_score, $crm114_cacheid);
 }
 
 sub check {
@@ -16278,7 +16283,8 @@ sub check {
     or die "Wrong initialization sequence: " . $self->{'initialized_stage'};
   my($dspam_signature,$dspam_result,$dspam_fname);
   my($which_section); my(@lines);
-  my($spam_level,$sa_tests,$spam_report,$spam_summary,$autolearn_status, $crm_status, $crm_score);
+  my($spam_level,$sa_tests,$spam_report,$spam_summary,$autolearn_status);
+  my($crm114_status, $crm114_score, $crm114_cacheid);
   my($fh) = $msginfo->mail_text;
   my($hdr_edits) = $msginfo->header_edits;
   if (!$hdr_edits) {
@@ -16396,7 +16402,7 @@ sub check {
           collect_results_structured($proc_fh,$pid,'SA',200*1024);
         @results = @$results_ref  if defined $results_ref;
       }
-      ($spam_level,$sa_tests,$spam_report,$spam_summary,$autolearn_status,$crm_status,$crm_score) =
+      ($spam_level,$sa_tests,$spam_report,$spam_summary,$autolearn_status,$crm114_status,$crm114_score,$crm114_cacheid) =
         @results;
     };
     my($eval_stat) = $@;
@@ -16446,8 +16452,9 @@ sub check {
   $msginfo->spam_level($spam_level); $msginfo->spam_status($sa_tests);
   $msginfo->spam_report($spam_report); $msginfo->spam_summary($spam_summary);
   $msginfo->autolearn_status($autolearn_status);
-  $msginfo->crm_status($crm_status);
-  $msginfo->crm_score($crm_score);
+  $msginfo->crm114_status($crm114_status);
+  $msginfo->crm114_score($crm114_score);
+  $msginfo->crm114_cacheid($crm114_cacheid);
   $spam_level;
 }
 
