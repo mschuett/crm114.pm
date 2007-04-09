@@ -8164,12 +8164,15 @@ sub check_mail($$$) {
         $virus_dejavu = 1;
       }
       if ($spam_presence_checked) {
-        my($spam_level,$spam_status,$spam_report,$spam_summary) =
-          @$cache_entry{'SL','SS','SR','SY'};
+        my($spam_level,$spam_status,$spam_report,$spam_summary,$crm114_score,$crm114_status,$crm114_cacheid) =
+          @$cache_entry{'SL','SS','SR','SY','SCS','SCT','SCI'};
         $msginfo->spam_level($spam_level);
         $msginfo->spam_status($spam_status);
         $msginfo->spam_report($spam_report);
         $msginfo->spam_summary($spam_summary);
+        $msginfo->crm114_score($crm114_score);
+        $msginfo->crm114_status($crm114_status);
+        $msginfo->crm114_cacheid($crm114_cacheid);
       }
       do_log(1,"cached %s from <%s> (%s,%s)", $body_digest, $sender,
                $virus_presence_checked, $spam_presence_checked);
@@ -8390,9 +8393,11 @@ sub check_mail($$$) {
         Amavis::SpamControl::spam_scan($conn,$msginfo);
         prolong_timer($which_section);
         snmp_count('OpsSpamCheck');
-        @$cache_entry{'St','SL','SS','SR','SY'} =
+        @$cache_entry{'St','SL','SS','SR','SY','SCS','SCT','SCI'} =
           ($now, $msginfo->spam_level, $msginfo->spam_status,
-                 $msginfo->spam_report, $msginfo->spam_summary);
+                 $msginfo->spam_report, $msginfo->spam_summary,
+                 $msginfo->crm114_score, $msginfo->crm114_status,
+                 $msginfo->crm114_cacheid);
         $spam_presence_checked = 1;
       }
     }
@@ -9209,7 +9214,7 @@ sub add_forwarding_header_edits_per_recip($$$$$$$$$) {
           if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-Status')};
         $hdr_edits->add_header('X-Spam-CRM114-Status', $crm114_header, 1)
           if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-CRM114-Status')};
-        $hdr_edits->add_header('X-Spam-CRM114-CacheID', $crm114_cacheid, 1)
+        $hdr_edits->add_header('X-Spam-CRM114-CacheID', $msginfo->crm114_cacheid, 1)
           if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-CRM114-CacheID')};
       }
       if ($do_tag2 && $is_local) {
