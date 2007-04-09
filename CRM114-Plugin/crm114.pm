@@ -1,6 +1,46 @@
+# CRM114 Plugin for SpamAssassin
 #
-# SpamAssassin Plugin for CRM114
+# Features:
+# - optionally use static or dynamic spam-/ham-scores
+# - adds template tags for custom header lines
+# - trains CRM114 on "spamassassin --report/--revoke"
 #
+# Problems/ToDo:
+# - Convert comments into a POD documentation.
+# - I tried to convert the open2() into
+#   Mail::SpamAssassin::Util::helper_app_pipe_open()
+#   like in Mail::SpamAssassin::Plugin::DCC, Pyzor et al
+#   but I failed because I did not get the output
+# - I usually use sa-learn to train my filter an would like to have sa-learn
+#   call this plugin as well. But the used callback bayes_learn() 
+#   does not seem to give access to the full message.
+# - If you use CRM114's cache then note that SA will only write headers
+#   beginning with "X-Spam-" but CRM114 looks for "X-CRM114-CacheID".
+#   Training with "spamassassin --report/--revoke" should work but otherwise
+#   you will have to change that line before training.
+#
+# Amavis-Notes:
+# - Is there some easy way to pass additional information from SA to Amavis?
+#   In order to add an additional header I had to change the whole callstack
+#   to add new return-values. Ist there no easier way?
+#   At least the SA-functions should use and return some SA-Info-object.
+#   The you only had to change call_spamassassin() to write it and
+#   add_forwarding_header_edits_per_recip() to use it (and not every step
+#   inbetween as well)
+# - That Problem also involves caching. I did not add cache-field and now
+#   I get mails with an empty X-Spam-CRM114-Status because the SA-field are
+#   looked up in the cache and the CRM fields stay empty.
+#
+# Version: 0.1, 070406
+# Version: 0.2, 070408
+# Version: 0.3, 070409
+# 
+# Initially based on plugin by Eugene Morozov:
+#   http://eugene.renice.org/spamassassin/crm114.pm
+# 
+# Also borrowing from the Mail::SpamAssassin:Plugin-modules.
+#
+# Everything else is
 #   Copyright 2007, Martin Schütte <info@mschuette.name>
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,42 +53,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 # 
-#
-# initially based on plugin by Eugene Morozov:
-#   http://eugene.renice.org/spamassassin/crm114.pm
-#
-# Features:
-# - optionally use static or dynamic spam-/ham-scores
-# - adds template tags for custom header lines
-#
-# Problems/ToDo:
-# - Convert comments into a POD documentation.
-# - I tried to convert the open2() into
-#   Mail::SpamAssassin::Util::helper_app_pipe_open()
-#   like in Mail::SpamAssassin::Plugin::DCC, Pyzor et al
-#   but I failed because I did not get the output
-# - I would like to implement some methods to train the filter, so that
-#   sa-learn would train the CRM114-database as well (while adopting
-#   CRM114's TOE-model by skipping messages already correctly classified).
-#   But I could not figure out the SA interface, because the
-#   callback bayes_learn() does not provide the fulltext of the message
-#   and plugin_report()/plugin_revoke() are not called.
-#
-# Amavis-Notes:
-# - Is there some easy way to pass additional information from SA to Amavis?
-#   In order to add an additional Header I had to change the whole callstack
-#   to add new return-values. Ist there no easier way?
-#   At least the SA-functions should use and return some SA-Info-object.
-#   The you only had to change call_spamassassin() to write it and
-#   add_forwarding_header_edits_per_recip() to use it (and not every step
-#   inbetween as well :-/ )
-# - That Problem also involves caching. I did not add cache-field and now
-#   I get mails with an empty X-Spam-CRM114-Status because the SA-field are
-#   looked up in the cache and the CRM fields stay empty.
-#
-# Version: 0.1, 070406
-# Version: 0.2, 070408
-# 
+
 package crm114;
 
 use strict;
@@ -126,12 +131,17 @@ sub set_config {
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
   # compute default crm114_dynscore_factor
-  # so that CRM score 40 yields SA required_score
-  my $default_crm114_dynscore_factor = $conf->{required_score} / -40;
+  # so that CRM score 25 yields SA required_score
+  my $default_crm114_dynscore_factor = $conf->{required_score} / -25;
   push (@cmds, {
     setting => 'crm114_dynscore_factor',
     default => $default_crm114_dynscore_factor,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+  push (@cmds, {
+    setting => 'crm114_use_cacheID',
+    default => 0,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
   push (@cmds, {
     setting => 'crm114_fulldebug',
@@ -152,12 +162,20 @@ sub call_crm {
             $self->{main}->{conf}->{crm114_remove_existing_spam_headers};
   my $crm114_remove_existing_virus_headers =
             $self->{main}->{conf}->{crm114_remove_existing_virus_headers};
+  my $crm114_use_cacheID = $self->{main}->{conf}->{crm114_use_cacheID};
   my $crm114_fulldebug = $self->{main}->{conf}->{crm114_fulldebug};
 
   # get seperate header und body, because we filter the headers
   my $hdr = $status->get_message()->get_pristine_header();
   my $bdy = $status->get_message()->get_pristine_body();
 
+  # if a Cache is used and the CacheID is included in every mail,
+  # then it should be used. the renaming is necessary because
+  # a) CRM114 looks only for "X-CRM114-CacheID"
+  # b) that way we easily pass the spam header removing below
+  if ($crm114_use_cacheID && ($action ne "check")) {
+    $hdr =~ s/^X-Spam-CRM114-CacheID: (.*)$/X-CRM114-CacheID: (.*)/;
+  }
   if ($crm114_remove_existing_spam_headers) {
     $hdr =~ s/^X-Spam-[^:]*:.*(\n\s.*)*\n//mg;
   }
@@ -312,6 +330,63 @@ sub check_crm {
     }
   }
   return 0;
+}
+
+sub plugin_report {
+  my ($self, $options) = @_;
+
+  dbg("crm114: plugin_report() called");
+  return unless $self->{main}->{conf}->{crm114_learn};
+
+  # call_crm() needs a PerMsgStatus object
+  my $pms = Mail::SpamAssassin::PerMsgStatus->new($self, $options->{msg});
+  # check CRM score first
+  my ($crm114_status, $crm114_score) = $self->call_crm($pms, "check");
+  
+  # msg is reported as spam but CRM did not recognize it --> train
+  if ($crm114_status ne "SPAM") {
+    $self->call_crm($pms, "train_spam");
+    if ("LEARNED AND CACHED SPAM" eq $pms->get_tag("CRM114ACTION")) {
+      $options->{report}->{report_available} = 1;
+      $options->{report}->{report_return} = 1;
+      dbg("crm114: trained spam message");
+    }
+    else {
+      warn(sprintf("crm114: error in training, unexpected Action: %s",
+              $pms->get_tag("CRM114ACTION")));
+    }
+  }
+  else {
+  	info("crm114: message already classified correctly, will not learn")
+  }
+}
+
+sub plugin_revoke {
+  my ($self, $options) = @_;
+
+  dbg("crm114: plugin_revoke() called");
+  return unless $self->{main}->{conf}->{crm114_learn};
+
+  # call_crm() needs a PerMsgStatus object
+  my $pms = Mail::SpamAssassin::PerMsgStatus->new($self, $options->{msg});
+  # check CRM score first
+  my ($crm114_status, $crm114_score) = $self->call_crm($pms, "check");
+  
+  # msg is reported as ham but CRM did not recognize it --> train
+  if ($crm114_status ne "GOOD") {
+    $self->call_crm($pms, "train_good");
+    if ("LEARNED AND CACHED GOOD" eq $pms->get_tag("CRM114ACTION")) {
+      $options->{report}->{report_available} = 1;
+      $options->{report}->{report_return} = 1;
+      dbg("crm114: trained ham/good message");
+    } else {
+      warn(sprintf("crm114: error in training, unexpected Action: %s",
+              $pms->get_tag("CRM114ACTION")));
+    }
+  }
+  else {
+  	info("crm114: message already classified correctly, will not learn")
+  }
 }
 
 1;
