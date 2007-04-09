@@ -26,7 +26,7 @@ full      CRM114_CHECK  eval:check_crm()
 priority  CRM114_CHECK  899
 
 # commandline to execute CRM114
-# default: crm ~/.crm114/mailreaver.crm
+# default: crm -u ~/.crm114 mailreaver.crm
 #crm114_command /usr/local/bin/crm -u /var/amavis/.crm114 mailreaver.crm
 
 # let SA add header lines to processed mails

@@ -95,7 +95,7 @@ sub set_config {
 
   push (@cmds, {
     setting => 'crm114_command',
-    default => 'crm ~/.crm114/mailreaver.crm',
+    default => 'crm -u ~/.crm114 mailreaver.crm',
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_STRING
   });
   push (@cmds, {
