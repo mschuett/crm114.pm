@@ -342,9 +342,14 @@ sub plugin_report {
   my $pms = Mail::SpamAssassin::PerMsgStatus->new($self, $options->{msg});
   # check CRM score first
   my ($crm114_status, $crm114_score) = $self->call_crm($pms, "check");
+  dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
+          $crm114_status, $crm114_score));
   
-  # msg is reported as spam but CRM did not recognize it --> train
-  if ($crm114_status ne "SPAM") {
+  # skip training if already classified correctly
+  if ($crm114_status eq "SPAM") {
+  	info("crm114: message already classified correctly, will not learn")
+  }
+  else {
     $self->call_crm($pms, "train_spam");
     if ("LEARNED AND CACHED SPAM" eq $pms->get_tag("CRM114ACTION")) {
       $options->{report}->{report_available} = 1;
@@ -355,9 +360,6 @@ sub plugin_report {
       warn(sprintf("crm114: error in training, unexpected Action: %s",
               $pms->get_tag("CRM114ACTION")));
     }
-  }
-  else {
-  	info("crm114: message already classified correctly, will not learn")
   }
 }
 
@@ -371,9 +373,14 @@ sub plugin_revoke {
   my $pms = Mail::SpamAssassin::PerMsgStatus->new($self, $options->{msg});
   # check CRM score first
   my ($crm114_status, $crm114_score) = $self->call_crm($pms, "check");
+  dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
+          $crm114_status, $crm114_score));
   
-  # msg is reported as ham but CRM did not recognize it --> train
-  if ($crm114_status ne "GOOD") {
+  # skip training if already classified correctly
+  if ($crm114_status eq "GOOD") {
+  	info("crm114: message already classified correctly, will not learn")
+  }
+  else {
     $self->call_crm($pms, "train_good");
     if ("LEARNED AND CACHED GOOD" eq $pms->get_tag("CRM114ACTION")) {
       $options->{report}->{report_available} = 1;
@@ -383,9 +390,6 @@ sub plugin_revoke {
       warn(sprintf("crm114: error in training, unexpected Action: %s",
               $pms->get_tag("CRM114ACTION")));
     }
-  }
-  else {
-  	info("crm114: message already classified correctly, will not learn")
   }
 }
 
