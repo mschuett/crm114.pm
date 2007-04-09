@@ -52,6 +52,10 @@ crm114_staticscore_good   -3.0
 crm114_staticscore_unsure  0.0
 crm114_staticscore_spam    3.0
 
+# should CRM114 be trained by SA?
+# default: 0
+crm114_learn 1
+
 # should we preserve the CRM114-CacheID for training or discard it?
 #
 # to use the cache enable it in mailfilter.cf, set this option, and 
