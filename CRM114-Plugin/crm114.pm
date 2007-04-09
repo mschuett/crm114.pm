@@ -386,8 +386,8 @@ sub plugin_revoke {
   else {
     $self->call_crm($pms, "train_good");
     if ("LEARNED AND CACHED GOOD" eq $pms->get_tag("CRM114ACTION")) {
-      $options->{report}->{report_available} = 1;
-      $options->{report}->{report_return} = 1;
+      $options->{revoke}->{revoke_available} = 1;
+      $options->{revoke}->{revoke_return} = 1;
       dbg("crm114: trained ham/good message");
     } else {
       warn(sprintf("crm114: error in training, unexpected Action: %s",
