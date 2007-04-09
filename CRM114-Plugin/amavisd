@@ -9148,7 +9148,6 @@ sub add_forwarding_header_edits_per_recip($$$$$$$$$) {
         join('', $blacklisted ? "BLACKLISTED\n " : (),
                  $whitelisted ? "WHITELISTED\n " : ()),
         $s);
-			$crm114_header = sprintf("%s ( %s )", $msginfo->crm114_status,$msginfo->crm114_score);
     }
     my($key) = join("\000", map {defined $_ ? $_ : ''} (
       $do_tag_virus_checked, $do_tag_virus, $do_tag_banned, $do_tag_badh,
@@ -9212,9 +9211,11 @@ sub add_forwarding_header_edits_per_recip($$$$$$$$$) {
              $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-Level')};
         $hdr_edits->add_header('X-Spam-Status', $full_spam_status, 1)
           if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-Status')};
-        $hdr_edits->add_header('X-Spam-CRM114-Status', $crm114_header, 1)
+        $hdr_edits->add_header('X-Spam-CRM114-Status', sprintf("%s ( %s )",
+                $msginfo->crm114_status,$msginfo->crm114_score), 1)
           if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-CRM114-Status')};
-        $hdr_edits->add_header('X-Spam-CRM114-CacheID', $msginfo->crm114_cacheid, 1)
+        $hdr_edits->add_header('X-Spam-CRM114-CacheID',
+                $msginfo->crm114_cacheid, 1)
           if $allowed_hdrs && $allowed_hdrs->{lc('X-Spam-CRM114-CacheID')};
       }
       if ($do_tag2 && $is_local) {
