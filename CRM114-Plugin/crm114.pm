@@ -6,30 +6,32 @@
 # - trains CRM114 on "spamassassin --report/--revoke"
 #
 # Problems/ToDo:
-# - Convert comments into a POD documentation.
-# - I tried to convert the open2() into
+# - This plugin is quite expensive in terms of performance.
+#   It might be possible to optimize the memory usage, but starting
+#   another process is always slow and CRM114 takes some CPU time
+#   for its own hard work.
+#   This is especially true for learning, because CRM114 is called twice
+#   (because we always check first if learning is necessary)
+# - I still want to convert the comments into a POD documentation.
+# - I tried to change the open2() into
 #   Mail::SpamAssassin::Util::helper_app_pipe_open()
 #   like in Mail::SpamAssassin::Plugin::DCC, Pyzor et al
-#   but I failed because I did not get the output
+#   but I failed because I did not get any output back.
 # - I usually use sa-learn to train my filter an would like to have sa-learn
 #   call this plugin as well. But the used callback bayes_learn() 
 #   does not seem to give access to the full message.
 # - If you use CRM114's cache then note that SA will only write headers
 #   beginning with "X-Spam-" but CRM114 looks for "X-CRM114-CacheID".
-#   Training with "spamassassin --report/--revoke" should work but otherwise
-#   you will have to change that line before training.
+#   Training with "spamassassin --report/--revoke" should work
+#   (because this plugin handles the renaming) but otherwise
+#   you will have to change that line before training from cache.
 #
 # Amavis-Notes:
-# - Is there some easy way to pass additional information from SA to Amavis?
-#   In order to add an additional header I had to change the whole callstack
-#   to add new return-values. Ist there no easier way?
-#   At least the SA-functions should use and return some SA-Info-object.
-#   The you only had to change call_spamassassin() to write it and
-#   add_forwarding_header_edits_per_recip() to use it (and not every step
-#   inbetween as well)
-# - That Problem also involves caching. I did not add cache-field and now
-#   I get mails with an empty X-Spam-CRM114-Status because the SA-field are
-#   looked up in the cache and the CRM fields stay empty.
+# I use Amavis to call SpamAssassin. Here is a patch against
+# amavisd-new-2.4.5 to include the additional CRM114-Headers into every Mail:
+# http://mschuette.name/files/amavisd.patch
+#
+#############################################################################
 #
 # Version: 0.1, 070406
 # Version: 0.2, 070408
@@ -52,7 +54,8 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-# 
+#
+#############################################################################
 
 package crm114;
 

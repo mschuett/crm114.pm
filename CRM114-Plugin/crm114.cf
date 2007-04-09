@@ -1,5 +1,19 @@
-# configuration for CRM 114 plugin
+# Configuration for CRM114 plugin
+# 
+# To use this plugin you have to set up CRM114 so that you have these files:
+# mailreaver.crm, mailfilter.cf, rewrites.mfp, priolist.mfp, and .CSS files
+# (see http://crm114.sourceforge.net/CRM114_Mailfilter_HOWTO.txt for details) 
+#
+# To use the plugin you probably have to set the crm114_command.
+# All other settings should have working default values,
+# which are chosen to be cautionary and nonintrusive.
+# The commented examples for each settings are my own tested configuration.
+#
+# Further Notes on Licence and Implementation are in crm114.pm
+# 
+#############################################################################
 
+# these two lines are necessary to activate the plugin:
 loadplugin crm114 crm114.pm
 full      CRM114_CHECK  eval:check_crm()
 
@@ -11,27 +25,27 @@ full      CRM114_CHECK  eval:check_crm()
 # then FuzzyOCR will decide to skip its tests
 priority  CRM114_CHECK  899
 
-# add new header lines
+# commandline to execute CRM114
+# default: crm ~/.crm114/mailreaver.crm
+#crm114_command /usr/local/bin/crm -u /var/amavis/.crm114 mailreaver.crm
+
+# let SA add header lines to processed mails
 #add_header all CRM114-Version _CRM114VERSION_
 #add_header all CRM114-CacheID _CRM114CACHEID_
 add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
-
-# commandline to execute
-# default: crm mailreaver.crm
-crm114_command /usr/local/bin/crm -u /var/amavis/.crm114 mailreaver.crm
 
 # ignore existing X-Spam or X-Virus headers
 # if SpamAssassin is called by Amavis then use the same value as Amavis does.
 # that way a SA-check from Amavis and on from the command line both see the same
 # Headers
 # default: 0
-crm114_remove_existing_spam_headers 1
-crm114_remove_existing_virus_headers 1
+#crm114_remove_existing_spam_headers 1
+#crm114_remove_existing_virus_headers 1
 
 # dynamic score
 # values: 0 - returns subtest results 
 #         1 - returns a dynamic CRM score (default)
-crm114_dynscore 1
+#crm114_dynscore 1
 
 # dynamic score normalization factor
 # CRM score have much higher absolute values and different signs than SA scores
@@ -43,24 +57,28 @@ crm114_dynscore 1
 #        - the absolute value should be quite low (certainly <.3, probably <=.2),
 #          otherwise the returned score would override all other tests.
 # default: calculate factor so that CRM-score -25 yields the SA required spam threshold
-crm114_dynscore_factor -0.05
+#crm114_dynscore_factor -0.05
 
 # static scores
 # without dynamic scores these scores are used
 # default values are respectively -3, 0, 3 for good, unsure, spam
-crm114_staticscore_good   -3.0
-crm114_staticscore_unsure  0.0
-crm114_staticscore_spam    3.0
+#crm114_staticscore_good   -3.0
+#crm114_staticscore_unsure  0.0
+#crm114_staticscore_spam    3.0
 
 # should CRM114 be trained by SA?
+# If enabled, then a call to Mail::SpamAssassin->learn() or
+# "spamassassin --report/--revoke" also calls the CRM114 plugin.
+# Since CRM114 uses a "Train On Error" strategy the plugin will check the
+# reported mail and only learn it if it is not not classified correctly.
 # default: 0
-crm114_learn 1
+#crm114_learn 1
 
 # should we preserve the CRM114-CacheID for training or discard it?
 #
 # to use the cache enable it in mailfilter.cf, set this option, and 
 # include the CacheID into all Mails with
 # "add_header all CRM114-CacheID _CRM114CACHEID_"
-# -- otherwise disable this option to strip passible CacheIDs before training
+# -- otherwise disable this option to strip CacheIDs before training
 # default: 0
-crm114_use_cacheID 1
+#crm114_use_cacheID 1
