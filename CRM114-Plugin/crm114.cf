@@ -81,4 +81,4 @@ add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
 # "add_header all CRM114-CacheID _CRM114CACHEID_"
 # -- otherwise disable this option to strip CacheIDs before training
 # default: 0
-#crm114_use_cacheID 1
+#crm114_use_cacheid 1

@@ -36,6 +36,7 @@
 # Version: 0.1, 070406
 # Version: 0.2, 070408
 # Version: 0.3, 070409
+# Version: 0.3.1, 070412 (fixed typo)
 # 
 # Initially based on plugin by Eugene Morozov:
 #   http://eugene.renice.org/spamassassin/crm114.pm
@@ -142,7 +143,7 @@ sub set_config {
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
   });
   push (@cmds, {
-    setting => 'crm114_use_cacheID',
+    setting => 'crm114_use_cacheid',
     default => 0,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
@@ -165,7 +166,7 @@ sub call_crm {
             $self->{main}->{conf}->{crm114_remove_existing_spam_headers};
   my $crm114_remove_existing_virus_headers =
             $self->{main}->{conf}->{crm114_remove_existing_virus_headers};
-  my $crm114_use_cacheID = $self->{main}->{conf}->{crm114_use_cacheID};
+  my $crm114_use_cacheID = $self->{main}->{conf}->{crm114_use_cacheid};
   my $crm114_fulldebug = $self->{main}->{conf}->{crm114_fulldebug};
 
   # get seperate header und body, because we filter the headers
