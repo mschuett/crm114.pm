@@ -10,8 +10,9 @@
 #   It might be possible to optimize the memory usage, but starting
 #   another process is always slow and CRM114 takes some CPU time
 #   for its own hard work.
-#   This is especially true for learning, because CRM114 is called twice
-#   (because we always check first if learning is necessary)
+#   This is especially true for learning, because CRM114 is called three
+#   times (because we always check first if learning is necessary, then
+#   mailtrainer does its own checking, and only then the mail is learned)
 # - I still want to convert the comments into a POD documentation.
 # - I tried to change the open2() into
 #   Mail::SpamAssassin::Util::helper_app_pipe_open()
@@ -37,6 +38,7 @@
 # Version: 0.2, 070408
 # Version: 0.3, 070409
 # Version: 0.3.1, 070412 (fixed typo)
+# Version: 0.3.2, 070414 (checked documentation)
 # 
 # Initially based on plugin by Eugene Morozov:
 #   http://eugene.renice.org/spamassassin/crm114.pm

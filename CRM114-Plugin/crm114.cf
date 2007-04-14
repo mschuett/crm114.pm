@@ -1,9 +1,25 @@
 # Configuration for CRM114 plugin
 # 
+# CRM114 INSTALLATION & CONFIGURATION:
 # To use this plugin you have to set up CRM114 so that you have these files:
 # mailreaver.crm, mailfilter.cf, rewrites.mfp, priolist.mfp, and .CSS files
-# (see http://crm114.sourceforge.net/CRM114_Mailfilter_HOWTO.txt for details) 
+# (see http://crm114.sourceforge.net/CRM114_Mailfilter_HOWTO.txt for details).
 #
+# The most important steps are:
+#     mkdir ~/.crm114
+#     cp mailfilter.cf rewrites.mfp *.crm ~/.crm114
+#     cd ~/.crm114
+#     cssutil -b -r spam.css
+#     cssutil -b -r nonspam.css
+#     touch priolist.mfp
+#     $EDITOR mailfilter.cf
+#     $EDITOR rewrites.mfp
+#
+# In mailfilter.cf check the option ":add_headers: /yes/"!
+# (and do not bother to change the flag_subject_string options --
+# this plugin ignores them anyway)
+# 
+# Plugin CONFIGURATION:
 # To use the plugin you probably have to set the crm114_command.
 # All other settings should have working default values,
 # which are chosen to be cautionary and nonintrusive.
