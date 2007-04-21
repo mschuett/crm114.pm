@@ -92,7 +92,11 @@ add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
 
 # should CRM114 be trained by SA-autolearn?
 # If enabled, then SA's autolearn also calls the CRM114 plugin.
-# Only activate this if you know what you're doing.
+#
+# This is different from :automatic_training: in CRM114's mailfilter.cf
+# because SA's score is influenced by several different factors while
+# CRM114 has to rely on its own classification. 
+# But anyway: Only activate this if you know what you're doing!
 # default: 0
 #crm114_autolearn 0
 
