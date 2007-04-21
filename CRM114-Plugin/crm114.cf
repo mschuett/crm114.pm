@@ -90,6 +90,12 @@ add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
 # default: 0
 #crm114_learn 1
 
+# should CRM114 be trained by SA-autolearn?
+# If enabled, then SA's autolearn also calls the CRM114 plugin.
+# Only activate this if you know what you're doing.
+# default: 0
+#crm114_autolearn 0
+
 # should we preserve the CRM114-CacheID for training or discard it?
 #
 # to use the cache enable it in mailfilter.cf, set this option, and 
