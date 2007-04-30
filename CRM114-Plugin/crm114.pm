@@ -40,6 +40,7 @@
 # Version: 0.3.1, 070412 (fixed typo)
 # Version: 0.3.2, 070414 (checked documentation)
 # Version: 0.4, 070421 (added crm114_autolearn)
+# Version: 0.4.1, 070430 (fixed crm114_autolearn)
 # 
 # Initially based on plugin by Eugene Morozov:
 #   http://eugene.renice.org/spamassassin/crm114.pm
