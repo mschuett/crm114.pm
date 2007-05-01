@@ -41,6 +41,7 @@
 # Version: 0.3.2, 070414 (checked documentation)
 # Version: 0.4, 070421 (added crm114_autolearn)
 # Version: 0.4.1, 070430 (fixed crm114_autolearn)
+# Version: 0.4.2, 070501 (fixed crm114_autolearn again)
 # 
 # Initially based on plugin by Eugene Morozov:
 #   http://eugene.renice.org/spamassassin/crm114.pm
@@ -78,9 +79,6 @@ sub new {
   $class = ref($class) || $class;
   my $self = $class->SUPER::new($mailsa);
   bless ($self, $class);
-
-  $self->{crm114_command} = 
-                "/usr/local/bin/crm -u /var/amavis/.crm114 mailreaver.crm";
 
   # then register an eval rule
   $self->register_eval_rule ("check_crm");
@@ -411,8 +409,6 @@ sub autolearn {
 
   dbg("crm114: autolearn() called");
   return unless $self->{main}->{conf}->{crm114_autolearn};
-  
-  my $options = 0;
 
   if ($options->{isspam} == 1) {
     # check CRM score first
