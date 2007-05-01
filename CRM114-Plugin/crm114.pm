@@ -43,6 +43,8 @@
 # Version: 0.4.1, 070430 (fixed crm114_autolearn)
 # Version: 0.4.2, 070501 (fixed crm114_autolearn again)
 # 
+# Thanks to Tomas Charvat for testing.
+#
 # Initially based on plugin by Eugene Morozov:
 #   http://eugene.renice.org/spamassassin/crm114.pm
 # 
