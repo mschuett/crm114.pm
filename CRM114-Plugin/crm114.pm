@@ -204,8 +204,7 @@ sub call_crm {
   $crm114_option = "--good" if ($action eq "train_good");
   my $crm114_cmdline = join(" ", ($crm114_command, $crm114_option));
 
-  dbg(sprintf("crm114: call_crm() called, crm114_command set to: %s, status: %s, action: %s",
-              $crm114_cmdline, $status, $action));
+  dbg(sprintf("crm114: call_crm() called, action: %s", $action));
 
   # Step 1: call CRM114
   #$status->enter_helper_run_mode();
