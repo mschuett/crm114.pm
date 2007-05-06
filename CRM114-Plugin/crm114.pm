@@ -42,13 +42,15 @@
 # Version: 0.4, 070421 (added crm114_autolearn)
 # Version: 0.4.1, 070430 (fixed crm114_autolearn)
 # Version: 0.4.2, 070501 (fixed crm114_autolearn again)
+# Version: 0.4.3, 070506 (fixed crm114_autolearn again, now tested)
+# Version: 0.5, 070506 (works with SA 3.2.0)
 # 
 # Thanks to Tomas Charvat for testing.
 #
 # Initially based on plugin by Eugene Morozov:
 #   http://eugene.renice.org/spamassassin/crm114.pm
 # 
-# Also borrowing from the Mail::SpamAssassin:Plugin-modules.
+# Also borrowing from the Mail::SpamAssassin::Plugin-modules.
 #
 # Everything else is
 #   Copyright 2007, Martin Schütte <info@mschuette.name>
@@ -202,7 +204,8 @@ sub call_crm {
   $crm114_option = "--good" if ($action eq "train_good");
   my $crm114_cmdline = join(" ", ($crm114_command, $crm114_option));
 
-  dbg(sprintf("crm114: call_crm() called, crm114_command set to: %s, status: %s, action: %s", $crm114_cmdline, $status, $action));
+  dbg(sprintf("crm114: call_crm() called, crm114_command set to: %s, status: %s, action: %s",
+              $crm114_cmdline, $status, $action));
 
   # Step 1: call CRM114
   #$status->enter_helper_run_mode();
@@ -241,7 +244,8 @@ sub call_crm {
       $crm114_score = $2;
       $status->set_tag("CRM114STATUS", $crm114_status);
       $status->set_tag("CRM114SCORE", $crm114_score);
-      dbg(sprintf("crm114: found status %s and score %s", $crm114_status, $crm114_score));
+      dbg(sprintf("crm114: found status %s and score %s",
+                  $crm114_status, $crm114_score));
     }
     elsif (/^X-CRM114-Action: (.+)$/) {
       $status->set_tag("CRM114ACTION", $1);
@@ -312,28 +316,38 @@ sub check_crm {
                                               sprintf("%0.3f", $sa_score);
       }
 
-      #The magic call to set dynamic score
-      $status->_handle_hit("CRM114_CHECK", $sa_score, 
-                             "CRM114: ", $description);
-      dbg(sprintf("crm114: score is %3.4f, translated to SA score: %3.4f, linear factor was %3.4f", $crm114_score, $sa_score, $crm114_dynscore_factor));
+      # Set dynamic description
+      $status->{resolver}->{conf}->{descriptions}->{CRM114_CHECK} = 
+                                                           $description;
+      # Set dynamic score
+      $status->got_hit("CRM114_CHECK", "CRM114: ",
+                       score => $sa_score, ruletype => "full");
+      dbg(sprintf("crm114: score is %3.4f, translated to SA score: %3.4f, linear factor was %3.4f",
+                  $crm114_score, $sa_score, $crm114_dynscore_factor));
     }
     else {
       # no dynamic score --> return status
       if ($crm114_status eq "GOOD") {
-        $status->_handle_hit("CRM114_GOOD", $crm114_staticscore_good,
-                               "CRM114: ", $description);
+        $status->{resolver}->{conf}->{descriptions}->{CRM114_GOOD} = 
+                                                           $description;
+        $status->got_hit("CRM114_GOOD", "CRM114: ",
+                       score => $crm114_staticscore_good, ruletype => "full");
         dbg(sprintf("crm114: score is %3.4f, returned CRM114_GOOD", 
                                $crm114_score));
       }
       elsif ($crm114_status eq "UNSURE") {
-        $status->_handle_hit("CRM114_UNSURE", $crm114_staticscore_unsure,
-                               "CRM114: ", $description);
+        $status->{resolver}->{conf}->{descriptions}->{CRM114_UNSURE} = 
+                                                           $description;
+        $status->got_hit("CRM114_UNSURE", "CRM114: ",
+                       score => $crm114_staticscore_unsure, ruletype => "full");
         dbg(sprintf("crm114: score is %3.4f, returned CRM114_UNSURE", 
                                $crm114_score));
       }
       elsif ($crm114_status eq "SPAM") {
-        $status->_handle_hit("CRM114_SPAM", $crm114_staticscore_spam,
-                               "CRM114: ", $description);
+        $status->{resolver}->{conf}->{descriptions}->{CRM114_SPAM} = 
+                                                           $description;
+        $status->got_hit("CRM114_SPAM", "CRM114: ",
+                       score => $crm114_staticscore_unsure, ruletype => "full");
         dbg(sprintf("crm114: score is %3.4f, returned CRM114_SPAM",
                                $crm114_score));
       }
@@ -414,7 +428,7 @@ sub autolearn {
 
   if ($options->{isspam} == 1) {
     # check CRM score first
-    my ($crm114_status, $crm114_score) = $self->call_crm($options->{pms}, "check");
+    my ($crm114_status, $crm114_score) = $self->call_crm($options->{permsgstatus}, "check");
     dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
             $crm114_status, $crm114_score));
     
@@ -423,19 +437,19 @@ sub autolearn {
     	info("crm114: spam message already classified correctly, will not learn")
     }
     else {
-      $self->call_crm($options->{pms}, "train_spam");
-      if ("LEARNED AND CACHED SPAM" eq $options->{pms}->get_tag("CRM114ACTION")) {
+      $self->call_crm($options->{permsgstatus}, "train_spam");
+      if ("LEARNED AND CACHED SPAM" eq $options->{permsgstatus}->get_tag("CRM114ACTION")) {
         dbg("crm114: trained spam message");
       }
       else {
         warn(sprintf("crm114: error in training, unexpected Action: %s",
-                $options->{pms}->get_tag("CRM114ACTION")));
+                $options->{permsgstatus}->get_tag("CRM114ACTION")));
       }
     }
   }
   else {
     # check CRM score first
-    my ($crm114_status, $crm114_score) = $self->call_crm($options->{pms}, "check");
+    my ($crm114_status, $crm114_score) = $self->call_crm($options->{permsgstatus}, "check");
     dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
             $crm114_status, $crm114_score));
     
@@ -444,13 +458,13 @@ sub autolearn {
     	info("crm114: good message already classified correctly, will not learn")
     }
     else {
-      $self->call_crm($options->{pms}, "train_good");
-      if ("LEARNED AND CACHED GOOD" eq $options->{pms}->get_tag("CRM114ACTION")) {
+      $self->call_crm($options->{permsgstatus}, "train_good");
+      if ("LEARNED AND CACHED GOOD" eq $options->{permsgstatus}->get_tag("CRM114ACTION")) {
         dbg("crm114: trained spam message");
       }
       else {
         warn(sprintf("crm114: error in training, unexpected Action: %s",
-                $options->{pms}->get_tag("CRM114ACTION")));
+                $options->{permsgstatus}->get_tag("CRM114ACTION")));
       }
     }
   } 
