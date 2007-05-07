@@ -329,6 +329,7 @@ sub check_crm {
       if ($crm114_status eq "GOOD") {
         $status->{conf}->{descriptions}->{CRM114_GOOD} = 
                                                            $description;
+        $status->{conf}->{scores}->{"CRM114_GOOD"} = $crm114_staticscore_good;
         $status->got_hit("CRM114_GOOD", "CRM114: ",
                        score => $crm114_staticscore_good, ruletype => "full");
         dbg(sprintf("crm114: score is %3.4f, returned CRM114_GOOD", 
@@ -337,6 +338,7 @@ sub check_crm {
       elsif ($crm114_status eq "UNSURE") {
         $status->{conf}->{descriptions}->{CRM114_UNSURE} = 
                                                            $description;
+        $status->{conf}->{scores}->{"CRM114_UNSURE"} = $crm114_staticscore_unsure;
         $status->got_hit("CRM114_UNSURE", "CRM114: ",
                        score => $crm114_staticscore_unsure, ruletype => "full");
         dbg(sprintf("crm114: score is %3.4f, returned CRM114_UNSURE", 
@@ -345,8 +347,9 @@ sub check_crm {
       elsif ($crm114_status eq "SPAM") {
         $status->{conf}->{descriptions}->{CRM114_SPAM} = 
                                                            $description;
+        $status->{conf}->{scores}->{"CRM114_SPAM"} = $crm114_staticscore_spam;
         $status->got_hit("CRM114_SPAM", "CRM114: ",
-                       score => $crm114_staticscore_unsure, ruletype => "full");
+                       score => $crm114_staticscore_spam, ruletype => "full");
         dbg(sprintf("crm114: score is %3.4f, returned CRM114_SPAM",
                                $crm114_score));
       }
