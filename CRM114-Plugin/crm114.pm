@@ -43,7 +43,7 @@
 # Version: 0.4.1, 070430 (fixed crm114_autolearn)
 # Version: 0.4.2, 070501 (fixed crm114_autolearn again)
 # Version: 0.4.3, 070506 (fixed crm114_autolearn again, now tested)
-# Version: 0.5, 070506 (works with SA 3.2.0)
+# Version: 0.5, 070507 (works with SA 3.2.0)
 # 
 # Thanks to Tomas Charvat for testing.
 #
