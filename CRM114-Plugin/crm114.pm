@@ -316,7 +316,7 @@ sub check_crm {
       }
 
       # Set dynamic description
-      $status->{resolver}->{conf}->{descriptions}->{CRM114_CHECK} = 
+      $status->{conf}->{descriptions}->{CRM114_CHECK} = 
                                                            $description;
       # Set dynamic score
       $status->got_hit("CRM114_CHECK", "CRM114: ",
@@ -327,7 +327,7 @@ sub check_crm {
     else {
       # no dynamic score --> return status
       if ($crm114_status eq "GOOD") {
-        $status->{resolver}->{conf}->{descriptions}->{CRM114_GOOD} = 
+        $status->{conf}->{descriptions}->{CRM114_GOOD} = 
                                                            $description;
         $status->got_hit("CRM114_GOOD", "CRM114: ",
                        score => $crm114_staticscore_good, ruletype => "full");
@@ -335,7 +335,7 @@ sub check_crm {
                                $crm114_score));
       }
       elsif ($crm114_status eq "UNSURE") {
-        $status->{resolver}->{conf}->{descriptions}->{CRM114_UNSURE} = 
+        $status->{conf}->{descriptions}->{CRM114_UNSURE} = 
                                                            $description;
         $status->got_hit("CRM114_UNSURE", "CRM114: ",
                        score => $crm114_staticscore_unsure, ruletype => "full");
@@ -343,7 +343,7 @@ sub check_crm {
                                $crm114_score));
       }
       elsif ($crm114_status eq "SPAM") {
-        $status->{resolver}->{conf}->{descriptions}->{CRM114_SPAM} = 
+        $status->{conf}->{descriptions}->{CRM114_SPAM} = 
                                                            $description;
         $status->got_hit("CRM114_SPAM", "CRM114: ",
                        score => $crm114_staticscore_unsure, ruletype => "full");
