@@ -163,12 +163,12 @@ sub set_config {
   });
   push (@cmds, {
     setting => 'crm114_autodisable_negative_score',
-    default => 0,
+    default => -999,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
   });
   push (@cmds, {
     setting => 'crm114_autodisable_score',
-    default => 0,
+    default => 999,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
   });
 
