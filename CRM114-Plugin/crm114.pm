@@ -6,13 +6,14 @@
 # - trains CRM114 on "spamassassin --report/--revoke"
 #
 # Problems/ToDo:
-# - This plugin is quite expensive in terms of performance.
+# - This plugin is probably quite expensive in terms of performance.
 #   It might be possible to optimize the memory usage, but starting
 #   another process is always slow and CRM114 takes some CPU time
 #   for its own hard work.
-#   This is especially true for learning, because CRM114 is called three
-#   times (because we always check first if learning is necessary, then
-#   mailtrainer does its own checking, and only then the mail is learned)
+#   NB: Training is now faster. I read the CRM114 README again
+#   and removed the checking that seemed to be unnecessary.
+#   (Quote: "It is safe to run mailtrainer.crm repeatedly [...];
+#   if the data doesn't need to be trained in, it won't be.")
 # - I still want to convert the comments into a POD documentation.
 # - I tried to change the open2() into
 #   Mail::SpamAssassin::Util::helper_app_pipe_open()
@@ -44,6 +45,7 @@
 # Version: 0.4.2, 070501 (fixed crm114_autolearn again)
 # Version: 0.4.3, 070506 (fixed crm114_autolearn again, now tested)
 # Version: 0.5, 070507 (works with SA 3.2.0)
+# Version: 0.6, 070514 (crm114_autodisable_score, omit test before learning)
 # 
 # Thanks to Tomas Charvat for testing.
 #
@@ -383,16 +385,16 @@ sub plugin_report {
 
   # call_crm() needs a PerMsgStatus object
   my $pms = Mail::SpamAssassin::PerMsgStatus->new($self, $options->{msg});
-  # check CRM score first
-  my ($crm114_status, $crm114_score) = $self->call_crm($pms, "check");
-  dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
-          $crm114_status, $crm114_score));
-  
-  # skip training if already classified correctly
-  if ($crm114_status eq "SPAM") {
-  	info("crm114: spam message already classified correctly, will not learn")
-  }
-  else {
+#  # check CRM score first
+#  my ($crm114_status, $crm114_score) = $self->call_crm($pms, "check");
+#  dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
+#          $crm114_status, $crm114_score));
+#  
+#  # skip training if already classified correctly
+#  if ($crm114_status eq "SPAM") {
+#  	info("crm114: spam message already classified correctly, will not learn")
+#  }
+#  else {
     $self->call_crm($pms, "train_spam");
     if ("LEARNED AND CACHED SPAM" eq $pms->get_tag("CRM114ACTION")) {
       $options->{report}->{report_available} = 1;
@@ -403,7 +405,7 @@ sub plugin_report {
       warn(sprintf("crm114: error in training, unexpected Action: %s",
               $pms->get_tag("CRM114ACTION")));
     }
-  }
+#  }
 }
 
 sub plugin_revoke {
@@ -414,16 +416,16 @@ sub plugin_revoke {
 
   # call_crm() needs a PerMsgStatus object
   my $pms = Mail::SpamAssassin::PerMsgStatus->new($self, $options->{msg});
-  # check CRM score first
-  my ($crm114_status, $crm114_score) = $self->call_crm($pms, "check");
-  dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
-          $crm114_status, $crm114_score));
-  
-  # skip training if already classified correctly
-  if ($crm114_status eq "GOOD") {
-  	info("crm114: good message already classified correctly, will not learn")
-  }
-  else {
+#  # check CRM score first
+#  my ($crm114_status, $crm114_score) = $self->call_crm($pms, "check");
+#  dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
+#          $crm114_status, $crm114_score));
+#  
+#  # skip training if already classified correctly
+#  if ($crm114_status eq "GOOD") {
+#  	info("crm114: good message already classified correctly, will not learn")
+#  }
+#  else {
     $self->call_crm($pms, "train_good");
     if ("LEARNED AND CACHED GOOD" eq $pms->get_tag("CRM114ACTION")) {
       $options->{revoke}->{revoke_available} = 1;
@@ -433,7 +435,7 @@ sub plugin_revoke {
       warn(sprintf("crm114: error in training, unexpected Action: %s",
               $pms->get_tag("CRM114ACTION")));
     }
-  }
+#  }
 }
 
 sub autolearn {
@@ -443,16 +445,16 @@ sub autolearn {
   return unless $self->{main}->{conf}->{crm114_autolearn};
 
   if ($options->{isspam} == 1) {
-    # check CRM score first
-    my ($crm114_status, $crm114_score) = $self->call_crm($options->{permsgstatus}, "check");
-    dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
-            $crm114_status, $crm114_score));
-    
-    # skip training if already classified correctly
-    if ($crm114_status eq "SPAM") {
-    	info("crm114: spam message already classified correctly, will not learn")
-    }
-    else {
+#    # check CRM score first
+#    my ($crm114_status, $crm114_score) = $self->call_crm($options->{permsgstatus}, "check");
+#    dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
+#            $crm114_status, $crm114_score));
+#    
+#    # skip training if already classified correctly
+#    if ($crm114_status eq "SPAM") {
+#    	info("crm114: spam message already classified correctly, will not learn")
+#    }
+#    else {
       $self->call_crm($options->{permsgstatus}, "train_spam");
       if ("LEARNED AND CACHED SPAM" eq $options->{permsgstatus}->get_tag("CRM114ACTION")) {
         dbg("crm114: trained spam message");
@@ -461,19 +463,19 @@ sub autolearn {
         warn(sprintf("crm114: error in training, unexpected Action: %s",
                 $options->{permsgstatus}->get_tag("CRM114ACTION")));
       }
-    }
+#    }
   }
   else {
-    # check CRM score first
-    my ($crm114_status, $crm114_score) = $self->call_crm($options->{permsgstatus}, "check");
-    dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
-            $crm114_status, $crm114_score));
-    
-    # skip training if already classified correctly
-    if ($crm114_status eq "GOOD") {
-    	info("crm114: good message already classified correctly, will not learn")
-    }
-    else {
+#    # check CRM score first
+#    my ($crm114_status, $crm114_score) = $self->call_crm($options->{permsgstatus}, "check");
+#    dbg(sprintf("crm114: test says %s with crm114-score %3.4f",
+#            $crm114_status, $crm114_score));
+#    
+#    # skip training if already classified correctly
+#    if ($crm114_status eq "GOOD") {
+#    	info("crm114: good message already classified correctly, will not learn")
+#    }
+#    else {
       $self->call_crm($options->{permsgstatus}, "train_good");
       if ("LEARNED AND CACHED GOOD" eq $options->{permsgstatus}->get_tag("CRM114ACTION")) {
         dbg("crm114: trained spam message");
@@ -482,8 +484,8 @@ sub autolearn {
         warn(sprintf("crm114: error in training, unexpected Action: %s",
                 $options->{permsgstatus}->get_tag("CRM114ACTION")));
       }
-    }
-  } 
+#    }
+  }
 }
 
 1;
