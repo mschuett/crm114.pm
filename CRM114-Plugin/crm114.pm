@@ -5,15 +5,28 @@
 # - adds template tags for custom header lines
 # - trains CRM114 on "spamassassin --report/--revoke"
 #
-# Problems/ToDo:
-# - This plugin is probably quite expensive in terms of performance.
-#   It might be possible to optimize the memory usage, but starting
-#   another process is always slow and CRM114 takes some CPU time
-#   for its own hard work.
-#   NB: Training is now faster. I read the CRM114 README again
-#   and removed the checking that seemed to be unnecessary.
+# Notes:
+# - Training is now faster. I read the CRM114 README again
+#   and removed the unnecessary checking.
 #   (Quote: "It is safe to run mailtrainer.crm repeatedly [...];
 #   if the data doesn't need to be trained in, it won't be.")
+# - Do not worry too much about performance and CPU costs, unless
+#   you know you are really CPU bound. (And not just waiting for
+#   your slow DNS server to reply.)
+#
+#   I ran a quick test running spamassassin --local in a for-loop,
+#   measuring the walltime, then using the median for comparison:
+#   foreach num ( `seq2 -e 20` )
+#     /usr/bin/time -a -o times spamassassin --local < testmail > /dev/null
+#   end
+#
+#   On a Pentium III (my 'test-box', fresh SA 3.2 install)
+#     it takes 3.5 and 4.1 seconds (+14%)  
+#   On an Opteron (real mailserver, SA 3.1.8 with a few more rules)
+#     it takes 2.9 and 3.2 seconds (+10%)
+#   For comparison: with network tests it takes 8.7 and 8.9 seconds (+2%)
+#  
+# Problems/ToDo:
 # - I still want to convert the comments into a POD documentation.
 # - I tried to change the open2() into
 #   Mail::SpamAssassin::Util::helper_app_pipe_open()
