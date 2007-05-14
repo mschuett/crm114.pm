@@ -158,6 +158,16 @@ sub set_config {
     default => 0,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
+  push (@cmds, {
+    setting => 'crm114_autodisable_negative_score',
+    default => 0,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+  push (@cmds, {
+    setting => 'crm114_autodisable_score',
+    default => 0,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
 
   $conf->{parser}->register_commands(\@cmds);
 }
@@ -270,6 +280,10 @@ sub check_crm {
   my $crm114_dynscore = $self->{main}->{conf}->{crm114_dynscore};
   my $crm114_dynscore_factor =
           $self->{main}->{conf}->{crm114_dynscore_factor};
+  my $crm114_autodisable_negative_score =
+          $self->{main}->{conf}->{crm114_autodisable_negative_score};
+  my $crm114_autodisable_score =
+          $self->{main}->{conf}->{crm114_autodisable_score};
 
   # init SA template tags, in case we cannot find real values
   $status->set_tag("CRM114VERSION", "UNKNOWN");
@@ -277,6 +291,14 @@ sub check_crm {
   $status->set_tag("CRM114STATUS",  "UNKNOWN");
   $status->set_tag("CRM114ACTION",  "UNKNOWN");
   $status->set_tag("CRM114SCORE",   "0");
+
+  # check if message already classified and CRM114 disabled
+  my $sa_prevscore = $status->get_score();
+  if (($sa_prevscore < $crm114_autodisable_negative_score)
+   || ($sa_prevscore > $crm114_autodisable_score)) {
+    warn("crm114: skip test because score=$sa_prevscore");
+    return 0;
+  }
 
   # Step 2: call CRM114
   my ($crm114_status, $crm114_score) = $self->call_crm($status, "check");
@@ -290,7 +312,6 @@ sub check_crm {
     # OK, got my score
     
     # first check if CRM and SA scores differ too much
-    my $sa_prevscore = $status->get_score();
     my $sa_reqscore = $status->get_required_score();
     if ((($sa_prevscore > $sa_reqscore) && ($crm114_status eq "GOOD"))
      || (($sa_prevscore < 0) && ($crm114_status eq "SPAM"))) {

@@ -108,3 +108,13 @@ add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
 # -- otherwise disable this option to strip CacheIDs before training
 # default: 0
 #crm114_use_cacheid 1
+
+# should we skip CRM114 if other tests indicate certain spam/ham?
+#
+# disable CRM114 if a message already has a score (from other tests)
+# less than crm114_autodisable_negative_score or
+# more than crm114_autodisable_score.
+#
+# default: -999/999 
+# crm114_autodisable_negative_score -999
+# crm114_autodisable_score 999
