@@ -13,19 +13,7 @@
 # - Do not worry too much about performance and CPU costs, unless
 #   you know you are really CPU bound. (And not just waiting for
 #   your slow DNS server to reply.)
-#
-#   I ran a quick test running spamassassin --local in a for-loop,
-#   measuring the walltime, then using the median for comparison:
-#   foreach num ( `seq2 -e 20` )
-#     /usr/bin/time -a -o times spamassassin --local < testmail > /dev/null
-#   end
-#
-#   On a Pentium III (my 'test-box', fresh SA 3.2 install)
-#     it takes 3.5 and 4.1 seconds (+14%)  
-#   On an Opteron (real mailserver, SA 3.1.8 with a few more rules)
-#     it takes 2.9 and 3.2 seconds (+10%)
-#   For comparison: with network tests it takes 8.7 and 8.9 seconds (+2%)
-#  
+#   
 # Problems/ToDo:
 # - I still want to convert the comments into a POD documentation.
 # - I tried to change the open2() into
