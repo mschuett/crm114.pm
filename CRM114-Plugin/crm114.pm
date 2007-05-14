@@ -158,11 +158,6 @@ sub set_config {
     default => 0,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
-  push (@cmds, {
-    setting => 'crm114_fulldebug',
-    default => 0,
-    type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
-  });
 
   $conf->{parser}->register_commands(\@cmds);
 }
@@ -178,7 +173,6 @@ sub call_crm {
   my $crm114_remove_existing_virus_headers =
             $self->{main}->{conf}->{crm114_remove_existing_virus_headers};
   my $crm114_use_cacheID = $self->{main}->{conf}->{crm114_use_cacheid};
-  my $crm114_fulldebug = $self->{main}->{conf}->{crm114_fulldebug};
 
   # get seperate header und body, because we filter the headers
   my $hdr = $status->get_message()->get_pristine_header();
@@ -276,7 +270,6 @@ sub check_crm {
   my $crm114_dynscore = $self->{main}->{conf}->{crm114_dynscore};
   my $crm114_dynscore_factor =
           $self->{main}->{conf}->{crm114_dynscore_factor};
-  my $crm114_fulldebug = $self->{main}->{conf}->{crm114_fulldebug};
 
   # init SA template tags, in case we cannot find real values
   $status->set_tag("CRM114VERSION", "UNKNOWN");
