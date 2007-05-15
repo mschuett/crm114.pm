@@ -47,6 +47,7 @@
 # Version: 0.4.3, 070506 (fixed crm114_autolearn again, now tested)
 # Version: 0.5, 070507 (works with SA 3.2.0)
 # Version: 0.6, 070514 (crm114_autodisable_score, omit test before learning)
+# Version: 0.6.1, 070516 (adjusted 'CRM and SA disagree' condition)
 # 
 # Thanks to Tomas Charvat for testing.
 #
@@ -316,8 +317,8 @@ sub check_crm {
     
     # first check if CRM and SA scores differ too much
     my $sa_reqscore = $status->get_required_score();
-    if ((($sa_prevscore > $sa_reqscore) && ($crm114_status eq "GOOD"))
-     || (($sa_prevscore < 0) && ($crm114_status eq "SPAM"))) {
+    if (((($sa_prevscore + $crm114_score) > $sa_reqscore) && ($crm114_status eq "GOOD"))
+     || ((($sa_prevscore + $crm114_score) < 0) && ($crm114_status eq "SPAM"))) {
       warn ("crm114: CRM and SA disagree over message status");
     }
 
