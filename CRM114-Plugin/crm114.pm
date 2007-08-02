@@ -48,6 +48,7 @@
 # Version: 0.5, 070507 (works with SA 3.2.0)
 # Version: 0.6, 070514 (crm114_autodisable_score, omit test before learning)
 # Version: 0.6.1, 070516 (adjusted 'CRM and SA disagree' condition)
+# Version: 0.6.2, 070802 (fixed small bug, thanks to Rick Cooper)
 # 
 # Thanks to Tomas Charvat for testing.
 #
