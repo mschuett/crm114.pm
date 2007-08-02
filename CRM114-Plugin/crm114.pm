@@ -232,7 +232,7 @@ sub call_crm {
   # and ignore everything else (just like Amavis does when calling SA)
   while(<CRM_OUT>) {
     if (/^(open2: .*)/) {
-      warn(sprintf("crm114: Error: %s"), $1);
+      warn(sprintf("crm114: Error: %s", $1));
     }
     elsif (/^X-CRM114-Version: (.+)$/) {
       $status->set_tag("CRM114VERSION", $1);
