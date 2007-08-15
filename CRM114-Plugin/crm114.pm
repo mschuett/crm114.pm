@@ -49,6 +49,7 @@
 # Version: 0.6, 070514 (crm114_autodisable_score, omit test before learning)
 # Version: 0.6.1, 070516 (adjusted 'CRM and SA disagree' condition)
 # Version: 0.6.2, 070802 (fixed small bug, thanks to Rick Cooper)
+# Version: 0.6.3, 070815 (now trying to prevent zobie processes)
 # 
 # Thanks to Tomas Charvat for testing.
 #
@@ -221,12 +222,23 @@ sub call_crm {
             #$tmpf, 1, $crm114_command, $crm114_option);
   #if (!$pid) { warn(sprintf("crm114: $!\n")); return; }
 
-  $status->enter_helper_run_mode();
+  #$status->enter_helper_run_mode();
   my $pid = open2(\*CRM_OUT, \*CRM_IN, $crm114_cmdline);
   dbg(sprintf("crm114: crm114_command run"));
   print CRM_IN $hdr;
   print CRM_IN $bdy;
   close CRM_IN;
+
+  # TODO:
+  # Problem: If spamd kills a scan due to timeout, the "waidpid $pid"
+  #          is not reached and $pid is left as a zombie process.
+  # Workaround: set this signal-handler to IGNORE, then $pid is 
+  #          immediately deleted by the OS
+  # A cleaner solution might be possible with the sequence
+  # enter_helper_run_mode();cleanup_kids();leave_helper_run_mode();
+  # provided by Dns.pm -- but I do not understand what these functions
+  # do exactly and if they work without helper_app_pipe_open()
+  $SIG{CHLD} = 'IGNORE';
 
   # Step 2: parse output
   # we only look for the bits we're going to return to SA
@@ -264,8 +276,8 @@ sub call_crm {
     }
   }
   close CRM_OUT;
-  waitpid $pid, 0;
-  $status->leave_helper_run_mode();
+  #waitpid $pid, 0;
+  #$status->leave_helper_run_mode();
   
   dbg(sprintf("crm114: call_crm returns (%s, %s)",
                        $crm114_status, $crm114_score));
