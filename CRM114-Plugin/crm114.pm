@@ -16,10 +16,6 @@
 #   
 # Problems/ToDo:
 # - I still want to convert the comments into a POD documentation.
-# - I tried to change the open2() into
-#   Mail::SpamAssassin::Util::helper_app_pipe_open()
-#   like in Mail::SpamAssassin::Plugin::DCC, Pyzor et al
-#   but I failed because I did not get any output back.
 # - I usually use sa-learn to train my filter an would like to have sa-learn
 #   call this plugin as well. But the used callback bayes_learn() 
 #   does not seem to give access to the full message.
@@ -30,9 +26,10 @@
 #   you will have to change that line before training from cache.
 #
 # Amavis-Notes:
-# I use Amavis to call SpamAssassin. Here is a patch against
-# amavisd-new-2.4.5 to include the additional CRM114-Headers into every Mail:
-# http://mschuette.name/files/amavisd.patch
+# I use Amavis to call SpamAssassin. Here are patches to include the
+# additional CRM114-Headers into every Mail:
+# against amavisd-new-2.4.5: http://mschuette.name/files/amavisd.245.patch
+# against amavisd-new-2.5.2: http://mschuette.name/files/amavisd.252.patch
 #
 #############################################################################
 #
@@ -49,7 +46,8 @@
 # Version: 0.6, 070514 (crm114_autodisable_score, omit test before learning)
 # Version: 0.6.1, 070516 (adjusted 'CRM and SA disagree' condition)
 # Version: 0.6.2, 070802 (fixed small bug, thanks to Rick Cooper)
-# Version: 0.6.3, 070815 (now trying to prevent zobie processes)
+# Version: 0.6.3, 070815 (now trying to prevent zombie processes)
+# Version: 0.6.4, 070819 (use helper_app_pipe_open-code from Plugin::Pyzor)
 # 
 # Thanks to Tomas Charvat for testing.
 #
@@ -79,7 +77,6 @@ use strict;
 use warnings "all";
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
-use IPC::Open2;
 our @ISA = qw(Mail::SpamAssassin::Plugin);
 
 sub new {
@@ -174,6 +171,11 @@ sub set_config {
     default => 999,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
   });
+  push (@cmds, {
+    setting => 'crm114_timeout',
+    default => 10,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
 
   $conf->{parser}->register_commands(\@cmds);
 }
@@ -189,10 +191,12 @@ sub call_crm {
   my $crm114_remove_existing_virus_headers =
             $self->{main}->{conf}->{crm114_remove_existing_virus_headers};
   my $crm114_use_cacheID = $self->{main}->{conf}->{crm114_use_cacheid};
+  my $crm114_timeout = $self->{main}->{conf}->{crm114_timeout};
 
   # get seperate header und body, because we filter the headers
   my $hdr = $status->get_message()->get_pristine_header();
-  my $bdy = $status->get_message()->get_pristine_body();
+  #my $bdy = $status->get_message()->get_pristine_body();
+  my $fullref = \$status->get_message()->get_pristine();
 
   # if a Cache is used and the CacheID is included in every mail,
   # then it should be used. the renaming is necessary because
@@ -217,37 +221,58 @@ sub call_crm {
   dbg(sprintf("crm114: call_crm() called, action: %s", $action));
 
   # Step 1: call CRM114
-  #$status->enter_helper_run_mode();
-  #my $pid = Mail::SpamAssassin::Util::helper_app_pipe_open(*CRM,
-            #$tmpf, 1, $crm114_command, $crm114_option);
-  #if (!$pid) { warn(sprintf("crm114: $!\n")); return; }
-
-  #$status->enter_helper_run_mode();
-  my $pid = open2(\*CRM_OUT, \*CRM_IN, $crm114_cmdline);
-  dbg(sprintf("crm114: crm114_command run"));
-  print CRM_IN $hdr;
-  print CRM_IN $bdy;
-  close CRM_IN;
-
-  # TODO:
-  # Problem: If spamd kills a scan due to timeout, the "waidpid $pid"
-  #          is not reached and $pid is left as a zombie process.
-  # Workaround: set this signal-handler to IGNORE, then $pid is 
-  #          immediately deleted by the OS
-  # A cleaner solution might be possible with the sequence
-  # enter_helper_run_mode();cleanup_kids();leave_helper_run_mode();
-  # provided by Dns.pm -- but I do not understand what these functions
-  # do exactly and if they work without helper_app_pipe_open()
-  $SIG{CHLD} = 'IGNORE';
-
+  # code copied from Plugin::Pyzor
+  my ($pid, @response);
+  my $tmpf = $status->create_fulltext_tmpfile($fullref);
+  $status->enter_helper_run_mode();
+  my $timer = Mail::SpamAssassin::Timeout->new({ secs => $crm114_timeout });
+  
+  my $err = $timer->run_and_catch(sub {
+    local $SIG{PIPE} = sub { die "__brokenpipe__ignore__\n" };
+    dbg("crm114: opening pipe: $crm114_command < $tmpf");
+    $pid = Mail::SpamAssassin::Util::helper_app_pipe_open(
+                                  *CRM_OUT,	$tmpf, 1, $crm114_command);
+    $pid or die "crm114: $!\n";
+    
+    @response = <CRM_OUT>;
+    close CRM_OUT
+      or dbg(sprintf("crm114: [%s] finished: %s exit=0x%04x",$pid,$!,$?));
+      
+    if (!@response) {
+      die("no response\n");
+    }
+  });
+  
+  if (defined(fileno(*CRM_OUT))) {  # still open
+    if ($pid) {
+      if (kill('TERM',$pid)) { dbg("crm114: killed stale helper [$pid]") }
+      else { dbg("crm114: killing helper application [$pid] failed: $!") }
+    }
+    close CRM_OUT
+      or dbg(sprintf("crm114: [%s] terminated: %s exit=0x%04x",$pid,$!,$?));
+  }
+  $status->leave_helper_run_mode();
+  if ($timer->timed_out()) {
+    dbg("crm114: check timed out after timeout seconds");
+    return 0;
+  }
+  if ($err) {
+    chomp $err;
+    if ($err eq "__brokenpipe__ignore__") {
+      dbg("crm114: check failed: broken pipe");
+    } elsif ($err eq "no response") {
+      dbg("crm114: check failed: no response");
+    } else {
+      warn("crm114: check failed: $err\n");
+    }
+  }
+  
   # Step 2: parse output
   # we only look for the bits we're going to return to SA
   # and ignore everything else (just like Amavis does when calling SA)
-  while(<CRM_OUT>) {
-    if (/^(open2: .*)/) {
-      warn(sprintf("crm114: Error: %s", $1));
-    }
-    elsif (/^X-CRM114-Version: (.+)$/) {
+  my $line;
+  foreach $_ (@response) {
+    if (/^X-CRM114-Version: (.+)$/) {
       $status->set_tag("CRM114VERSION", $1);
       dbg(sprintf("crm114: found version %s", $1));
     }
@@ -275,10 +300,7 @@ sub call_crm {
       dbg(sprintf("crm114: found unknown CRM114-header '%s", $1));
     }
   }
-  close CRM_OUT;
-  #waitpid $pid, 0;
-  #$status->leave_helper_run_mode();
-  
+
   dbg(sprintf("crm114: call_crm returns (%s, %s)",
                        $crm114_status, $crm114_score));
   return ($crm114_status, $crm114_score);
