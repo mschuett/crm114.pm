@@ -48,6 +48,7 @@
 # Version: 0.6.2, 070802 (fixed small bug, thanks to Rick Cooper)
 # Version: 0.6.3, 070815 (now trying to prevent zombie processes)
 # Version: 0.6.4, 070819 (use helper_app_pipe_open-code from Plugin::Pyzor)
+# Version: 0.6.5, 070821 (fixed bug in pipe_open-code, thanks to Robert Horton)
 # 
 # Thanks to Tomas Charvat for testing.
 #
@@ -229,9 +230,9 @@ sub call_crm {
   
   my $err = $timer->run_and_catch(sub {
     local $SIG{PIPE} = sub { die "__brokenpipe__ignore__\n" };
-    dbg("crm114: opening pipe: $crm114_command < $tmpf");
+    dbg("crm114: opening pipe: $crm114_cmdline < $tmpf");
     $pid = Mail::SpamAssassin::Util::helper_app_pipe_open(
-                                  *CRM_OUT,	$tmpf, 1, $crm114_command);
+                                  *CRM_OUT,	$tmpf, 1, $crm114_cmdline);
     $pid or die "crm114: $!\n";
     
     @response = <CRM_OUT>;
