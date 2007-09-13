@@ -49,6 +49,7 @@
 # Version: 0.6.3, 070815 (now trying to prevent zombie processes)
 # Version: 0.6.4, 070819 (use helper_app_pipe_open-code from Plugin::Pyzor)
 # Version: 0.6.5, 070821 (fixed bug in pipe_open-code, thanks to Robert Horton)
+# Version: 0.6.6, 070913 (fixed crm114_use_cacheid, added debug-tag)
 # 
 # Thanks to Tomas Charvat for testing.
 #
@@ -204,7 +205,7 @@ sub call_crm {
   # a) CRM114 looks only for "X-CRM114-CacheID"
   # b) that way we easily pass the spam header removing below
   if ($crm114_use_cacheID && ($action ne "check")) {
-    $hdr =~ s/^X-Spam-CRM114-CacheID: (.*)$/X-CRM114-CacheID: (.*)/;
+    $hdr =~ s/^X-Spam-CRM114-CacheID: (.*)$/X-CRM114-CacheID: $1/;
   }
   if ($crm114_remove_existing_spam_headers) {
     $hdr =~ s/^X-Spam-[^:]*:.*(\n\s.*)*\n//mg;
@@ -302,6 +303,9 @@ sub call_crm {
     }
   }
 
+  # for debugging: this lets us include original crm114-output into the mail  
+  $status->set_tag("CRM114DEBUG", join("|", @response[0 .. 10]));
+
   dbg(sprintf("crm114: call_crm returns (%s, %s)",
                        $crm114_status, $crm114_score));
   return ($crm114_status, $crm114_score);
@@ -331,6 +335,8 @@ sub check_crm {
   $status->set_tag("CRM114STATUS",  "UNKNOWN");
   $status->set_tag("CRM114ACTION",  "UNKNOWN");
   $status->set_tag("CRM114SCORE",   "0");
+  # and one additional for debugging
+  $status->set_tag("CRM114DEBUG",  "");
 
   # check if message already classified and CRM114 disabled
   my $sa_prevscore = $status->get_score();
