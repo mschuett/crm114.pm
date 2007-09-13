@@ -304,7 +304,7 @@ sub call_crm {
   }
 
   # for debugging: this lets us include original crm114-output into the mail  
-  $status->set_tag("CRM114DEBUG", join("|", @response[0 .. 10]));
+  $status->set_tag("CRM114DEBUG", join("| ", @response[0 .. 40]));
 
   dbg(sprintf("crm114: call_crm returns (%s, %s)",
                        $crm114_status, $crm114_score));
