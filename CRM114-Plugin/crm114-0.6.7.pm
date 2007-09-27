@@ -50,6 +50,7 @@
 # Version: 0.6.4, 070819 (use helper_app_pipe_open-code from Plugin::Pyzor)
 # Version: 0.6.5, 070821 (fixed bug in pipe_open-code, thanks to Robert Horton)
 # Version: 0.6.6, 070913 (fixed crm114_use_cacheid, added debug-tag)
+# Version: 0.6.7, 070927 (add score for unsure but probably spam/good and fix possibly uninitialized value)
 # 
 # Thanks to Tomas Charvat for testing.
 #
@@ -59,7 +60,7 @@
 # Also borrowing from the Mail::SpamAssassin::Plugin-modules.
 #
 # Everything else is
-#   Copyright 2007, Martin Schütte <info@mschuette.name>
+#   Copyright 2007, Martin Schï¿½tte <info@mschuette.name>
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
