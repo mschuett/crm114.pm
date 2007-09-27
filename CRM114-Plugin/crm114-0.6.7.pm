@@ -60,7 +60,7 @@
 # Also borrowing from the Mail::SpamAssassin::Plugin-modules.
 #
 # Everything else is
-#   Copyright 2007, Martin Schï¿½tte <info@mschuette.name>
+#   Copyright 2007, Martin Schütte <info@mschuette.name>
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
