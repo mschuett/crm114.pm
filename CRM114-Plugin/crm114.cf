@@ -25,12 +25,15 @@
 # which are chosen to be cautionary and nonintrusive.
 # The commented examples for each settings are my own tested configuration.
 #
-# Further Notes on Licence and Implementation are in crm114.pm
+# Further Notes on Licence and Implementation are in crm114.pm and its POD
 # 
 #############################################################################
 
 # these two lines are necessary to activate the plugin:
-loadplugin crm114 crm114.pm
+# for older versions <0.7
+# loadplugin crm114 crm114.pm
+# for newer versions >=0.7
+loadplugin Mail::SpamAssassin::Plugin::CRM114 crm114.pm
 full      CRM114_CHECK  eval:check_crm()
 
 # this high priority is not necessary. but running late allows us
@@ -77,10 +80,16 @@ add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
 
 # static scores
 # without dynamic scores these scores are used
-# default values are respectively -3, 0, 3 for good, unsure, spam
-#crm114_staticscore_good   -3.0
-#crm114_staticscore_unsure  0.0
-#crm114_staticscore_spam    3.0
+# default values are respectively -3, 3, -0.5, 0.5, and 0 for good, spam,
+# probably good, probably spam, and unsure good/spam depend on crm114's
+# classification the probably good/spam values are used
+# for |crm114-score| >= 5 (i.e. a crm114-classification of unsure)
+# leaving |crm114-score| < 5 for 'really' unsure  
+#crm114_staticscore_good      -3.0
+#crm114_staticscore_prob_good -0.5
+#crm114_staticscore_unsure     0.0
+#crm114_staticscore_prob_spam  0.5
+#crm114_staticscore_spam       3.0
 
 # should CRM114 be trained by SA?
 # If enabled, then a call to Mail::SpamAssassin->learn() or
