@@ -1,85 +1,107 @@
-# CRM114 Plugin for SpamAssassin
-#
-# Features:
-# - optionally use static or dynamic spam-/ham-scores
-# - adds template tags for custom header lines
-# - trains CRM114 on "spamassassin --report/--revoke"
-#
-# Notes:
-# - Training is now faster. I read the CRM114 README again
-#   and removed the unnecessary checking.
-#   (Quote: "It is safe to run mailtrainer.crm repeatedly [...];
-#   if the data doesn't need to be trained in, it won't be.")
-# - Do not worry too much about performance and CPU costs, unless
-#   you know you are really CPU bound. (And not just waiting for
-#   your slow DNS server to reply.)
-#   
-# Problems/ToDo:
-# - I still want to convert the comments into a POD documentation.
-# - I usually use sa-learn to train my filter an would like to have sa-learn
-#   call this plugin as well. But the used callback bayes_learn() 
-#   does not seem to give access to the full message.
-# - If you use CRM114's cache then note that SA will only write headers
-#   beginning with "X-Spam-" but CRM114 looks for "X-CRM114-CacheID".
-#   Training with "spamassassin --report/--revoke" should work
-#   (because this plugin handles the renaming) but otherwise
-#   you will have to change that line before training from cache.
-#
-# Amavis-Notes:
-# I use Amavis to call SpamAssassin. Here are patches to include the
-# additional CRM114-Headers into every Mail:
-# against amavisd-new-2.4.5: http://mschuette.name/files/amavisd.245.patch
-# against amavisd-new-2.5.2: http://mschuette.name/files/amavisd.252.patch
-#
-#############################################################################
-#
-# Version: 0.1, 070406
-# Version: 0.2, 070408
-# Version: 0.3, 070409
-# Version: 0.3.1, 070412 (fixed typo)
-# Version: 0.3.2, 070414 (checked documentation)
-# Version: 0.4, 070421 (added crm114_autolearn)
-# Version: 0.4.1, 070430 (fixed crm114_autolearn)
-# Version: 0.4.2, 070501 (fixed crm114_autolearn again)
-# Version: 0.4.3, 070506 (fixed crm114_autolearn again, now tested)
-# Version: 0.5, 070507 (works with SA 3.2.0)
-# Version: 0.6, 070514 (crm114_autodisable_score, omit test before learning)
-# Version: 0.6.1, 070516 (adjusted 'CRM and SA disagree' condition)
-# Version: 0.6.2, 070802 (fixed small bug, thanks to Rick Cooper)
-# Version: 0.6.3, 070815 (now trying to prevent zombie processes)
-# Version: 0.6.4, 070819 (use helper_app_pipe_open-code from Plugin::Pyzor)
-# Version: 0.6.5, 070821 (fixed bug in pipe_open-code, thanks to Robert Horton)
-# Version: 0.6.6, 070913 (fixed crm114_use_cacheid, added debug-tag)
+# <@LICENSE>
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to you under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at:
 # 
-# Thanks to Tomas Charvat for testing.
-#
-# Initially based on plugin by Eugene Morozov:
-#   http://eugene.renice.org/spamassassin/crm114.pm
+#     http://www.apache.org/licenses/LICENSE-2.0
 # 
-# Also borrowing from the Mail::SpamAssassin::Plugin-modules.
-#
-# Everything else is
-#   Copyright 2007, Martin Schütte <info@mschuette.name>
-#
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#       http://www.apache.org/licenses/LICENSE-2.0
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
-#
-#############################################################################
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# </@LICENSE>
 
-package crm114;
+=head1 NAME
+
+Mail::SpamAssassin::Plugin::CRM114 - use CRM114 with SpamAssassin
+
+=head1 SYNOPSIS
+
+  loadplugin     Mail::SpamAssassin::Plugin::CRM114
+
+=head1 DESCRIPTION
+
+This plugin uses the external program crm114 for classification.
+
+=head1 FEATURES
+
+=over 4
+
+=item *
+
+adds template tags for custom header lines
+
+=item *
+
+trains CRM114 on C<spamassassin --report/--revoke>
+
+=item *
+
+optionally use static or dynamic spam-/ham-scores
+
+=back
+
+=head1 NOTES/PROBLEMS/TODO
+
+If you use CRM114's cache then note that SA will only write headers
+beginning with C<X-Spam-> but CRM114 looks for C<X-CRM114-CacheID>.
+Training with C<spamassassin --report>/C<--revoke> should work
+(because this plugin handles the renaming) but otherwise
+you will have to change that line before training from cache.
+
+Amavis-Notes:
+I use Amavis to call SpamAssassin. Here are patches to include the
+additional CRM114-Headers into every Mail:
+against amavisd-new-2.4.5: L<http://mschuette.name/files/amavisd.245.patch>,
+against amavisd-new-2.5.2: L<http://mschuette.name/files/amavisd.252.patch>.
+
+=head1 AUTHOR & ACKNOWLEDGEMENT
+
+Thanks to Tomas Charvat for testing.
+
+Initially based on plugin by Eugene Morozov:
+L<http://eugene.renice.org/spamassassin/crm114.pm>
+
+Also borrowing from the C<Mail::SpamAssassin::Plugin>-modules.
+
+Everything else is
+Copyright 2007, Martin Schuette <info@mschuette.name>
+
+=head1 CRM114 INSTALLATION & CONFIGURATION
+
+To use this plugin you have to set up CRM114 so that you have these files:
+F<mailreaver.crm>, F<mailfilter.cf>, F<rewrites.mfp>, F<priolist.mfp>, and F<.CSS> files
+(see L<http://crm114.sourceforge.net/CRM114_Mailfilter_HOWTO.txt> for details).
+
+The most important steps are:
+
+    mkdir ~/.crm114
+    cp mailfilter.cf rewrites.mfp *.crm ~/.crm114
+    cd ~/.crm114
+    cssutil -b -r spam.css
+    cssutil -b -r nonspam.css
+    touch priolist.mfp
+    $EDITOR mailfilter.cf
+    $EDITOR rewrites.mfp
+
+In F<mailfilter.cf> check the option C<:add_headers: /yes/>!
+(and do not bother to change the C<flag_subject_string> options --
+this plugin ignores them anyway)
+
+=cut
+
+package Mail::SpamAssassin::Plugin::CRM114;
 
 use strict;
 use warnings "all";
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
 our @ISA = qw(Mail::SpamAssassin::Plugin);
+our $crm114_plugin_version = "0.7";
 
 sub new {
   my ($class, $mailsa) = @_;
@@ -105,21 +127,73 @@ sub set_config {
   my ($self, $conf) = @_;
   my @cmds = ();
 
+=head1 PLUGIN CONFIGURATION
+
+To use this plugin you probably have to set the C<crm114_command>.
+
+All other settings should have working default values,
+which are chosen to be cautionary and nonintrusive.
+
+=over 4
+
+=item crm114_command string		(default: C<crm -u ~/.crm114 mailreaver.crm>)
+
+The commandline used to execute CRM114.
+It is recommendet to run mailreaver.crm and to use absolute paths only.
+
+=cut
+
   push (@cmds, {
     setting => 'crm114_command',
     default => 'crm -u ~/.crm114 mailreaver.crm',
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_STRING
   });
+
+=item crm114_learn	(0|1)	(default: 0)
+
+Set this if CRM114 should be trained by SA.
+
+If enabled, then a call to C<Mail::SpamAssassin-E<gt>learn()> or
+C<spamassassin --report>/C<--revoke> also calls the CRM114 plugin
+and lets CRM114 learn the mail as spam/ham.
+
+=cut
+
   push (@cmds, {
     setting => 'crm114_learn',
     default => 0,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
+
+=item crm114_autolearn	(0|1)	(default: 0)
+
+Set this if CRM114 should be trained by SA's autolearn function.
+
+NB: This is different from C<:automatic_training:> in CRM114's C<mailfilter.cf>
+because SA's score is influenced by several different factors while
+CRM114 has to rely on its own classification. 
+
+But anyway: Only activate this if you know what you are doing!
+
+=cut
+
   push (@cmds, {
     setting => 'crm114_autolearn',
     default => 0,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
+
+=item crm114_remove_existing_spam_headers	(0|1)	(default: 0)
+
+=item crm114_remove_existing_virus_headers	(0|1)	(default: 0)
+
+Set whether existing X-Spam or X-Virus headers are to be removed before classification.
+
+If SpamAssassin is called by Amavis then set the same value as Amavis does.
+That way a SA-check from Amavis and one from the command line both see the same Headers.
+
+=cut
+
   push (@cmds, {
     setting => 'crm114_remove_existing_spam_headers',
     default => 0,
@@ -130,26 +204,53 @@ sub set_config {
     default => 0,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
-  push (@cmds, {
-    setting => 'crm114_staticscore_good',
-    default => -3,
-    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
-  });
-  push (@cmds, {
-    setting => 'crm114_staticscore_unsure',
-    default => 0,
-    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
-  });
-  push (@cmds, {
-    setting => 'crm114_staticscore_spam',
-    default => 3,
-    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
-  });
+
+=item crm114_dynscore	(0|1)	(default: 0)
+
+Set to use a dynamic score, i.e. calculate a SA score from the CRM114 score.
+Otherwise the static scores are used.
+
+=cut
+
   push (@cmds, {
     setting => 'crm114_dynscore',
-    default => 1,
+    default => 0,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
+
+=item crm114_dynscore_factor		(default: depends on SA C<required_score>)
+
+Dynamic score normalization factor.
+
+With dynamic scoring the SA score is calculated by: CRM score * C<crm114_dynscore_factor>
+
+Notes: 
+
+=over 8
+
+=item *
+
+Keep in mind that CRM score have much higher absolute values
+and different signs than SA scores (usual ham-scores are between
+15 and 40, scores from -10 to 10 are undecided, previously seen
+spam easily gets -200).
+
+=item *
+
+Thus this has to be a negative number!
+
+=item *
+
+Thus the absolute value should be quite low (certainly E<lt>.3, probably E<lt>=.2),
+otherwise the returned score would override all other tests.
+
+=back
+
+The default is to calculate this factor so that a CRM-score of -25 yields
+the SA required spam threshold (C<required_score>).
+
+=cut
+
   # compute default crm114_dynscore_factor
   # so that CRM score 25 yields SA required_score
   my $default_crm114_dynscore_factor = $conf->{required_score} / -25;
@@ -158,11 +259,101 @@ sub set_config {
     default => $default_crm114_dynscore_factor,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
   });
+
+=item crm114_staticscore_good	n	(default: -3)
+
+=item crm114_staticscore_prob_good	n	(default: -0.5)
+
+=item crm114_staticscore_unsure	n	(default: 0)
+
+=item crm114_staticscore_prob_spam	n	(default: 0.5)
+
+=item crm114_staticscore_spam	n	(default: 3)
+
+Static scores for different classifications and scores.
+
+Scores for good/spam are used according to CRM114's classification.
+
+On very short messages CRM114 often returns scores with
+the right sign (for spam/ham) but with a low absolute value
+because there are not enough tokens for sufficiently certain classification.
+
+The prob_good/prob_spam were introduced to benefit from these cases as well.
+The basic assumption is that CRM114 uses the default C<:thick_threshold:> of 10
+(i.e. classify if |crm-score| E<gt>= 10). The prob_good/prob_spam scores
+are used if 5 E<lt>= |crm-score| E<lt>= 10, leaving the unsure score
+for |crm-score| E<lt> 5.
+
+=cut
+
+  push (@cmds, {
+    setting => 'crm114_staticscore_good',
+    default => -3,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+  push (@cmds, {
+    setting => 'crm114_staticscore_prob_good',
+    default => -0.5,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+  push (@cmds, {
+    setting => 'crm114_staticscore_unsure',
+    default => 0,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+  push (@cmds, {
+    setting => 'crm114_staticscore_prob_spam',
+    default => 0.5,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+  push (@cmds, {
+    setting => 'crm114_staticscore_spam',
+    default => 3,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+
+=item crm114_use_cacheid		(default: 0)
+
+
+Set to preserve the CRM114-CacheID for training.
+
+To use the cache enable it in F<mailfilter.cf>, set this option, and 
+include the CacheID into all Mails with
+C<add_header all CRM114-CacheID _CRM114CACHEID_>
+
+=cut
+
   push (@cmds, {
     setting => 'crm114_use_cacheid',
     default => 0,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
+
+=item crm114_autodisable_score		(default: 999)
+
+=item crm114_autodisable_negative_score		(default: -999)
+
+Skip CRM114 check if a message already has
+a score E<gt>= C<crm114_autodisable_score> or
+a score E<lt>= C<crm114_autodisable_negative_score>
+from other tests.
+
+This can be used if you think you have to save some CPU cycles.
+
+In that case you will also want to set a priority for CRM114
+(e.g. C<priority  CRM114_CHECK  899>). This ensures that other
+(less expensive) tests run first and accumulate some points.
+899 is recommended as an optimization because FuzzyOCR runs at 900;
+thus if CRM114 already yields a high SA score, then FuzzyOCR will decide
+to skip its tests (just like CRM114 might skip if the previous tests
+already got us C<crm114_autodisable_score>).
+
+NB: Do not worry too much about performance and CPU costs, unless
+you know you are really CPU bound. (And not just waiting for
+your slow DNS server to reply.)
+
+=cut
+
   push (@cmds, {
     setting => 'crm114_autodisable_negative_score',
     default => -999,
@@ -173,6 +364,15 @@ sub set_config {
     default => 999,
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
   });
+
+=item crm114_timeout	n	(default: 10)
+
+Set timeout of I<n> seconds to cancel a unresponsive CRM114 process. 
+
+=back
+
+=cut
+
   push (@cmds, {
     setting => 'crm114_timeout',
     default => 10,
@@ -228,7 +428,7 @@ sub call_crm {
   my $tmpf = $status->create_fulltext_tmpfile($fullref);
   $status->enter_helper_run_mode();
   my $timer = Mail::SpamAssassin::Timeout->new({ secs => $crm114_timeout });
-  
+
   my $err = $timer->run_and_catch(sub {
     local $SIG{PIPE} = sub { die "__brokenpipe__ignore__\n" };
     dbg("crm114: opening pipe: $crm114_cmdline < $tmpf");
@@ -244,7 +444,7 @@ sub call_crm {
       die("no response\n");
     }
   });
-  
+
   if (defined(fileno(*CRM_OUT))) {  # still open
     if ($pid) {
       if (kill('TERM',$pid)) { dbg("crm114: killed stale helper [$pid]") }
@@ -268,14 +468,15 @@ sub call_crm {
       warn("crm114: check failed: $err\n");
     }
   }
-  
+
   # Step 2: parse output
   # we only look for the bits we're going to return to SA
   # and ignore everything else (just like Amavis does when calling SA)
   my $line;
   foreach $_ (@response) {
     if (/^X-CRM114-Version: (.+)$/) {
-      $status->set_tag("CRM114VERSION", $1);
+      our $crm114_plugin_version;
+      $status->set_tag("CRM114VERSION", $1." (SA plugin v$crm114_plugin_version)");
       dbg(sprintf("crm114: found version %s", $1));
     }
     elsif (/^X-CRM114-CacheID: (.+)$/) {
@@ -303,8 +504,11 @@ sub call_crm {
     }
   }
 
-  # for debugging: this lets us include original crm114-output into the mail  
-  $status->set_tag("CRM114DEBUG", join("| ", @response[0 .. 40]));
+  # for debugging: this lets us include original crm114-output into the mail
+  # also make sure that 40 or 20 lines present -- otherwise no output
+  my @response_part = defined @response[0..40] ? @response[0..40] :
+      (defined @response[0..20] ? @response[0..20] : ());
+  $status->set_tag("CRM114DEBUG", join("| ", @response_part));
 
   dbg(sprintf("crm114: call_crm returns (%s, %s)",
                        $crm114_status, $crm114_score));
@@ -317,8 +521,12 @@ sub check_crm {
   # Step 0: get options
   my $crm114_staticscore_good =
           $self->{main}->{conf}->{crm114_staticscore_good};
+  my $crm114_staticscore_prob_good =
+          $self->{main}->{conf}->{crm114_staticscore_prob_good};
   my $crm114_staticscore_unsure =
           $self->{main}->{conf}->{crm114_staticscore_unsure};
+  my $crm114_staticscore_prob_spam =
+          $self->{main}->{conf}->{crm114_staticscore_prob_spam};
   my $crm114_staticscore_spam =
           $self->{main}->{conf}->{crm114_staticscore_spam};
   my $crm114_dynscore = $self->{main}->{conf}->{crm114_dynscore};
@@ -376,8 +584,7 @@ sub check_crm {
       }
 
       # Set dynamic description
-      $status->{conf}->{descriptions}->{CRM114_CHECK} = 
-                                                           $description;
+      $status->{conf}->{descriptions}->{CRM114_CHECK} = $description;
       # Set dynamic score
       $status->got_hit("CRM114_CHECK", "CRM114: ",
                        score => $sa_score, ruletype => "full");
@@ -387,33 +594,44 @@ sub check_crm {
     else {
       # no dynamic score --> return status
       if ($crm114_status eq "GOOD") {
-        $status->{conf}->{descriptions}->{CRM114_GOOD} = 
-                                                           $description;
+        $status->{conf}->{descriptions}->{CRM114_GOOD} = $description;
         $status->{conf}->{scores}->{"CRM114_GOOD"} = $crm114_staticscore_good;
         $status->got_hit("CRM114_GOOD", "CRM114: ",
                        score => $crm114_staticscore_good, ruletype => "full");
         dbg(sprintf("crm114: score is %3.4f, returned CRM114_GOOD", 
                                $crm114_score));
       }
-      elsif ($crm114_status eq "UNSURE") {
-        $status->{conf}->{descriptions}->{CRM114_UNSURE} = 
-                                                           $description;
-        $status->{conf}->{scores}->{"CRM114_UNSURE"} = $crm114_staticscore_unsure;
-        $status->got_hit("CRM114_UNSURE", "CRM114: ",
-                       score => $crm114_staticscore_unsure, ruletype => "full");
-        dbg(sprintf("crm114: score is %3.4f, returned CRM114_UNSURE", 
-                               $crm114_score));
-      }
       elsif ($crm114_status eq "SPAM") {
-        $status->{conf}->{descriptions}->{CRM114_SPAM} = 
-                                                           $description;
+        $status->{conf}->{descriptions}->{CRM114_SPAM} = $description;
         $status->{conf}->{scores}->{"CRM114_SPAM"} = $crm114_staticscore_spam;
         $status->got_hit("CRM114_SPAM", "CRM114: ",
                        score => $crm114_staticscore_spam, ruletype => "full");
         dbg(sprintf("crm114: score is %3.4f, returned CRM114_SPAM",
                                $crm114_score));
       }
-      else {  # status UNKNOWN --> no score
+      elsif ($crm114_status eq "UNSURE") {
+        $status->{conf}->{descriptions}->{CRM114_UNSURE} = $description;
+        # basic assumption for 'probably'-cases: CRM114 unsure-threshold of +/- 10
+        if ($crm114_score <= -5) {
+          $status->{conf}->{scores}->{"CRM114_UNSURE"} = $crm114_staticscore_prob_spam;
+          $status->got_hit("CRM114_PROB_SPAM", "CRM114: ",
+                       score => $crm114_staticscore_prob_spam, ruletype => "full");
+          dbg(sprintf("crm114: score is %3.4f, returned CRM114_PROB_SPAM", $crm114_score));
+        }
+        elsif ($crm114_score >= 5) {
+          $status->{conf}->{scores}->{"CRM114_UNSURE"} = $crm114_staticscore_prob_good;
+          $status->got_hit("CRM114_PROB_GOOD", "CRM114: ",
+                       score => $crm114_staticscore_prob_good, ruletype => "full");
+          dbg(sprintf("crm114: score is %3.4f, returned CRM114_PROB_GOOD", $crm114_score));
+        }
+        else {
+          $status->{conf}->{scores}->{"CRM114_UNSURE"} = $crm114_staticscore_unsure;
+          $status->got_hit("CRM114_UNSURE", "CRM114: ",
+                       score => $crm114_staticscore_unsure, ruletype => "full");
+          dbg(sprintf("crm114: score is %3.4f, returned CRM114_UNSURE", $crm114_score));
+        }
+      }
+      else {  # status UNKNOWN --> error, no score
         0;
       }
     }
@@ -489,3 +707,28 @@ sub autolearn {
 }
 
 1;
+
+=head1 VERSIONS
+
+ Version: 0.1, 070406
+ Version: 0.2, 070408
+ Version: 0.3, 070409
+ Version: 0.3.1, 070412 (fixed typo)
+ Version: 0.3.2, 070414 (checked documentation)
+ Version: 0.4, 070421 (added crm114_autolearn)
+ Version: 0.4.1, 070430 (fixed crm114_autolearn)
+ Version: 0.4.2, 070501 (fixed crm114_autolearn again)
+ Version: 0.4.3, 070506 (fixed crm114_autolearn again, now tested)
+ Version: 0.5, 070507 (works with SA 3.2.0)
+ Version: 0.6, 070514 (crm114_autodisable_score, omit test before learning)
+ Version: 0.6.1, 070516 (adjusted 'CRM and SA disagree' condition)
+ Version: 0.6.2, 070802 (fixed small bug, thanks to Rick Cooper)
+ Version: 0.6.3, 070815 (now trying to prevent zombie processes)
+ Version: 0.6.4, 070819 (use helper_app_pipe_open-code from Plugin::Pyzor)
+ Version: 0.6.5, 070821 (fixed bug in pipe_open-code, thanks to Robert Horton)
+ Version: 0.6.6, 070913 (fixed crm114_use_cacheid, added debug-tag)
+ Version: 0.6.7, 070927 (add score for unsure but probably spam/good, fix possibly uninitialized value)
+ Version: 0.7, 070928 (add POD documentation, considered stable)
+
+=cut
+
