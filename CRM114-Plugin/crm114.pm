@@ -101,7 +101,7 @@ use warnings "all";
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
 our @ISA = qw(Mail::SpamAssassin::Plugin);
-our $crm114_plugin_version = "0.7";
+our $crm114_plugin_version = "0.7.1";
 
 sub new {
   my ($class, $mailsa) = @_;
@@ -613,13 +613,13 @@ sub check_crm {
         $status->{conf}->{descriptions}->{CRM114_UNSURE} = $description;
         # basic assumption for 'probably'-cases: CRM114 unsure-threshold of +/- 10
         if ($crm114_score <= -5) {
-          $status->{conf}->{scores}->{"CRM114_UNSURE"} = $crm114_staticscore_prob_spam;
+          $status->{conf}->{scores}->{"CRM114_PROB_SPAM"} = $crm114_staticscore_prob_spam;
           $status->got_hit("CRM114_PROB_SPAM", "CRM114: ",
                        score => $crm114_staticscore_prob_spam, ruletype => "full");
           dbg(sprintf("crm114: score is %3.4f, returned CRM114_PROB_SPAM", $crm114_score));
         }
         elsif ($crm114_score >= 5) {
-          $status->{conf}->{scores}->{"CRM114_UNSURE"} = $crm114_staticscore_prob_good;
+          $status->{conf}->{scores}->{"CRM114_PROB_GOOD"} = $crm114_staticscore_prob_good;
           $status->got_hit("CRM114_PROB_GOOD", "CRM114: ",
                        score => $crm114_staticscore_prob_good, ruletype => "full");
           dbg(sprintf("crm114: score is %3.4f, returned CRM114_PROB_GOOD", $crm114_score));
@@ -729,6 +729,7 @@ sub autolearn {
  Version: 0.6.6, 070913 (fixed crm114_use_cacheid, added debug-tag)
  Version: 0.6.7, 070927 (add score for unsure but probably spam/good, fix possibly uninitialized value)
  Version: 0.7, 070928 (add POD documentation, considered stable)
-
+ Version: 0.7.1, 071230 (fix prob-cases, where score did not appear in Spam-Status)
+ 
 =cut
 
