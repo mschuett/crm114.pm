@@ -101,7 +101,7 @@ use warnings "all";
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
 our @ISA = qw(Mail::SpamAssassin::Plugin);
-our $crm114_plugin_version = "0.7.1";
+our $crm114_plugin_version = "0.7.2";
 
 sub new {
   my ($class, $mailsa) = @_;
@@ -434,11 +434,11 @@ sub call_crm {
     dbg("crm114: opening pipe: $crm114_cmdline < $tmpf");
     $pid = Mail::SpamAssassin::Util::helper_app_pipe_open(
                                   *CRM_OUT,	$tmpf, 1, $crm114_cmdline);
-    $pid or die "crm114: $!\n";
+    $pid or die "crm114: starting subprocess failed: error msg=$!\n";
     
     @response = <CRM_OUT>;
     close CRM_OUT
-      or dbg(sprintf("crm114: [%s] finished: %s exit=0x%04x",$pid,$!,$?));
+      or dbg(sprintf("crm114: subprocess [pid %s] failed: exit code=0x%04x (%d dec), error msg=%s\nthis probably means one of crm114's subprocesses failed and this plugin cannot do anything about it.",$pid,$?,$?,$!));
       
     if (!@response) {
       die("no response\n");
@@ -447,11 +447,11 @@ sub call_crm {
 
   if (defined(fileno(*CRM_OUT))) {  # still open
     if ($pid) {
-      if (kill('TERM',$pid)) { dbg("crm114: killed stale helper [$pid]") }
-      else { dbg("crm114: killing helper application [$pid] failed: $!") }
+      if (kill('TERM',$pid)) { dbg("crm114: closed pipe still open(?). killed stale helper [pid %s]") }
+      else { dbg("crm114: closed pipe still open(?). cannot kill helper application [pid %s]: $!") }
     }
     close CRM_OUT
-      or dbg(sprintf("crm114: [%s] terminated: %s exit=0x%04x",$pid,$!,$?));
+      or dbg(sprintf("crm114: subprocess [pid %s] had pipe still open. now terminated: exit code=0x%04x (%d dec), error msg=%s\n",$pid,$?,$?,$!));
   }
   $status->leave_helper_run_mode();
   if ($timer->timed_out()) {
@@ -730,6 +730,7 @@ sub autolearn {
  Version: 0.6.7, 070927 (add score for unsure but probably spam/good, fix possibly uninitialized value)
  Version: 0.7, 070928 (add POD documentation, considered stable)
  Version: 0.7.1, 071230 (fix prob-cases, where score did not appear in Spam-Status)
+ Version: 0.7.2, 071230 (hopefully better error messages in case of process failure)
  
 =cut
 
