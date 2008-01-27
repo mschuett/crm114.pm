@@ -101,7 +101,7 @@ use warnings "all";
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
 our @ISA = qw(Mail::SpamAssassin::Plugin);
-our $crm114_plugin_version = "0.7.2";
+our $crm114_plugin_version = "0.7.3";
 
 sub new {
   my ($class, $mailsa) = @_;
@@ -697,7 +697,7 @@ sub autolearn {
   else {
     $self->call_crm($options->{permsgstatus}, "train_good");
     if ("LEARNED AND CACHED GOOD" eq $options->{permsgstatus}->get_tag("CRM114ACTION")) {
-      dbg("crm114: trained spam message");
+      dbg("crm114: trained good message");
     }
     else {
       warn(sprintf("crm114: error in training, unexpected Action: %s",
@@ -731,6 +731,7 @@ sub autolearn {
  Version: 0.7, 070928 (add POD documentation, considered stable)
  Version: 0.7.1, 071230 (fix prob-cases, where score did not appear in Spam-Status)
  Version: 0.7.2, 071230 (hopefully better error messages in case of process failure)
- 
+ Version: 0.7.3, 080127 (typo in autolearn)
+
 =cut
 
