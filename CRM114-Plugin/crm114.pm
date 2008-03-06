@@ -101,7 +101,7 @@ use warnings "all";
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
 our @ISA = qw(Mail::SpamAssassin::Plugin);
-our $crm114_plugin_version = "0.7.3";
+our $crm114_plugin_version = "0.7.4";
 
 sub new {
   my ($class, $mailsa) = @_;
@@ -395,23 +395,33 @@ sub call_crm {
   my $crm114_use_cacheID = $self->{main}->{conf}->{crm114_use_cacheid};
   my $crm114_timeout = $self->{main}->{conf}->{crm114_timeout};
 
-  # get seperate header und body, because we filter the headers
-  my $hdr = $status->get_message()->get_pristine_header();
-  #my $bdy = $status->get_message()->get_pristine_body();
-  my $fullref = \$status->get_message()->get_pristine();
-
-  # if a Cache is used and the CacheID is included in every mail,
-  # then it should be used. the renaming is necessary because
-  # a) CRM114 looks only for "X-CRM114-CacheID"
-  # b) that way we easily pass the spam header removing below
-  if ($crm114_use_cacheID && ($action ne "check")) {
-    $hdr =~ s/^X-Spam-CRM114-CacheID: (.*)$/X-CRM114-CacheID: $1/;
+  my $fullref;
+  # if we do not filter, then just get whole mail as plaintext
+  if (!($crm114_use_cacheID && ($action ne "check")) 
+    && !$crm114_remove_existing_spam_headers 
+    && !$crm114_remove_existing_virus_headers) {
+    $fullref = \$status->get_message()->get_pristine();
   }
-  if ($crm114_remove_existing_spam_headers) {
-    $hdr =~ s/^X-Spam-[^:]*:.*(\n\s.*)*\n//mg;
-  }
-  if ($crm114_remove_existing_virus_headers) {
-    $hdr =~ s/^X-Virus-[^:]*:.*(\n\s.*)*\n//mg;
+  else {  # otherwise get seperate header und body to modify first
+    my $hdr = $status->get_message()->get_pristine_header();
+    my $bdy = $status->get_message()->get_pristine_body();
+    
+    # if a Cache is used and the CacheID is included in every mail,
+    # then it should be used. the renaming is necessary because
+    # a) CRM114 looks only for "X-CRM114-CacheID"
+    # b) that way we easily pass the spam header removing below
+    if ($crm114_use_cacheID && ($action ne "check")) {
+      $hdr =~ s/^X-Spam-CRM114-CacheID: (.*)$/X-CRM114-CacheID: $1/;
+    }
+    if ($crm114_remove_existing_spam_headers) {
+      $hdr =~ s/^X-Spam-[^:]*:.*(\n\s.*)*\n//mg;
+    }
+    if ($crm114_remove_existing_virus_headers) {
+      $hdr =~ s/^X-Virus-[^:]*:.*(\n\s.*)*\n//mg;
+    }
+	# NOTE: quite ugly, but we need a reference
+    my $fullref2 = $hdr.$bdy;
+    $fullref = \$fullref2;
   }
 
   my $crm114_option;
@@ -425,6 +435,8 @@ sub call_crm {
   # Step 1: call CRM114
   # code copied from Plugin::Pyzor
   my ($pid, @response);
+  # TODO: elimininate tmpfile, use pipe instead
+  #       (but impossible with helper_app_pipe_open)
   my $tmpf = $status->create_fulltext_tmpfile($fullref);
   $status->enter_helper_run_mode();
   my $timer = Mail::SpamAssassin::Timeout->new({ secs => $crm114_timeout });
@@ -445,6 +457,9 @@ sub call_crm {
     }
   });
 
+  # IMHO not strictly necessary, but be nice and clean
+  $status->delete_fulltext_tmpfile();
+
   if (defined(fileno(*CRM_OUT))) {  # still open
     if ($pid) {
       if (kill('TERM',$pid)) { dbg("crm114: closed pipe still open(?). killed stale helper [pid %s]") }
@@ -455,18 +470,12 @@ sub call_crm {
   }
   $status->leave_helper_run_mode();
   if ($timer->timed_out()) {
-    dbg("crm114: check timed out after timeout seconds");
+    dbg("crm114: check timed out after $crm114_timeout seconds");
     return 0;
   }
   if ($err) {
     chomp $err;
-    if ($err eq "__brokenpipe__ignore__") {
-      dbg("crm114: check failed: broken pipe");
-    } elsif ($err eq "no response") {
-      dbg("crm114: check failed: no response");
-    } else {
-      warn("crm114: check failed: $err\n");
-    }
+    warn("crm114: check failed: $err\n");
   }
 
   # Step 2: parse output
@@ -632,7 +641,7 @@ sub check_crm {
         }
       }
       else {  # status UNKNOWN --> error, no score
-        0;
+        return 0;
       }
     }
   }
@@ -732,6 +741,7 @@ sub autolearn {
  Version: 0.7.1, 071230 (fix prob-cases, where score did not appear in Spam-Status)
  Version: 0.7.2, 071230 (hopefully better error messages in case of process failure)
  Version: 0.7.3, 080127 (typo in autolearn)
+ Version: 0.7.4, 080301 (CLT08-Edition, fixed header filter, thanks to Thomas Mueller)
 
 =cut
 
