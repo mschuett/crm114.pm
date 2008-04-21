@@ -68,6 +68,8 @@ L<http://eugene.renice.org/spamassassin/crm114.pm>
 
 Also borrowing from the C<Mail::SpamAssassin::Plugin>-modules.
 
+C<lookup_crm114_cacheid()> contributed by Thomas Mueller <thomas@chaschperli.ch>
+
 Everything else is
 Copyright 2007, Martin Schuette <info@mschuette.name>
 
@@ -329,6 +331,35 @@ C<add_header all CRM114-CacheID _CRM114CACHEID_>
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
   });
 
+=item crm114_lookup_cacheid                (default: 0)
+
+
+If crm114_use_cacheid is true and CRM114-CacheID is not found
+in the message, do a lookup in the reaver_cache/texts directory. 
+
+You also need to set crm114_cache_dir
+
+=cut
+
+  push (@cmds, {
+    setting => 'crm114_lookup_cacheid',
+    default => 0,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_BOOL
+  });
+
+=item crm114_cache_dir                (default: ~/.crm114/reaver_cache)
+
+Used to lookup cacheid if set crm114_lookup_cacheid. Needs to be set to
+reaver_cache/texts directory.
+
+=cut
+
+  push (@cmds, {
+    setting => 'crm114_cache_dir',
+    default => '~/.crm114/reaver_cache',
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_STRING
+  });
+
 =item crm114_autodisable_score		(default: 999)
 
 =item crm114_autodisable_negative_score		(default: -999)
@@ -382,6 +413,53 @@ Set timeout of I<n> seconds to cancel a unresponsive CRM114 process.
   $conf->{parser}->register_commands(\@cmds);
 }
 
+#
+# <cacheid> $self->lookup_crm114_cacheid(<messageid>)
+#
+
+sub lookup_crm114_cacheid($) {
+  my ($self, $msgid) = @_;
+  my $cacheid = 0;
+
+  my $crm114_cache_dir = $self->{main}->{conf}->{crm114_cache_dir};
+  my @files;
+
+  # Escape $ for regex search, maybe there needs to be escaped more?
+  $msgid =~ s/\$/\\\$/g;
+
+  dbg("crm114: lookup_crm114_cacheid: $msgid");
+
+  if (!opendir(DIR, "$crm114_cache_dir/texts")) {
+      warn("crm114: lookup_crm114_cacheid: can't open directory $crm114_cache_dir/texts: $!");
+      return 0;
+  }
+
+  foreach (readdir(DIR)) {
+    if (-f "$crm114_cache_dir/texts/$_") {
+      # Reverse directory listing, to read newest to oldest
+      unshift(@files,$_);
+    }
+  }
+  closedir DIR;
+
+  foreach my $file (@files) {
+    my $header = "";
+    local $/ = "\n\n"; # to read the whole header
+    if (open(FILE, "< $crm114_cache_dir/texts/$file")) {
+      $header = <FILE>; 
+      close FILE;
+      if ($header =~ /Message-(id|Id|ID): {0,2}<$msgid>/) {
+        $cacheid = "sfid-$file";
+        last;
+      }
+    } else {
+      warn("crm114: lookup_crm114_cacheid: can't open $crm114_cache_dir/texts/$file: $!");
+    }
+  }
+
+  return $cacheid;
+}
+
 sub call_crm {
   my ($self, $status, $action) = @_;
   my $crm114_score = "0";
@@ -394,6 +472,7 @@ sub call_crm {
             $self->{main}->{conf}->{crm114_remove_existing_virus_headers};
   my $crm114_use_cacheID = $self->{main}->{conf}->{crm114_use_cacheid};
   my $crm114_timeout = $self->{main}->{conf}->{crm114_timeout};
+  my $crm114_lookup_cacheid = $self->{main}->{conf}->{crm114_lookup_cacheid};
 
   my $fullref;
   # if we do not filter, then just get whole mail as plaintext
@@ -413,6 +492,30 @@ sub call_crm {
     if ($crm114_use_cacheID && ($action ne "check")) {
       $hdr =~ s/^X-Spam-CRM114-CacheID: (.*)$/X-CRM114-CacheID: $1/;
     }
+   
+    # Some mailsystem don't preserve the original mail headers (exception: Message-ID)
+    # So lookup the message-id in the reaver_cache directory and
+    # insert the CRM114 CacheID
+    if ($crm114_use_cacheID
+      && $crm114_lookup_cacheid
+      && ($action ne "check")
+      && !($hdr =~ /X-CRM114-CacheID/m)) {
+      if ($hdr =~ m/^Message-(ID|id|Id): {0,2}<(.*)>/m) {
+        my $msgid = $2;
+        my $cacheid = $self->lookup_crm114_cacheid($msgid);
+
+        if ($cacheid) {
+          dbg("crm114: found CRM114-CacheID ($cacheid)");
+          # Prepend the CRM114 CacheID to the header
+          $hdr = "X-CRM114-CacheID: $cacheid\n$hdr";
+        } else {
+          warn("crm114: CRM114-CacheID not found (msgid: $msgid / cacheid: $cacheid)");
+        }
+      } else {
+        warn("crm114: No Message-Id found");
+      }
+    }
+
     if ($crm114_remove_existing_spam_headers) {
       $hdr =~ s/^X-Spam-[^:]*:.*(\n\s.*)*\n//mg;
     }
@@ -742,6 +845,7 @@ sub autolearn {
  Version: 0.7.2, 071230 (hopefully better error messages in case of process failure)
  Version: 0.7.3, 080127 (typo in autolearn)
  Version: 0.7.4, 080301 (CLT08-Edition, fixed header filter, thanks to Thomas Mueller)
+ Version: 0.7.5, 080421 (added lookup_crm114_cacheid, thanks to Thomas Mueller)
 
 =cut
 
