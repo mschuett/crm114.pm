@@ -103,7 +103,7 @@ use warnings "all";
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
 our @ISA = qw(Mail::SpamAssassin::Plugin);
-our $crm114_plugin_version = "0.7.4";
+our $crm114_plugin_version = "0.7.5";
 
 sub new {
   my ($class, $mailsa) = @_;
