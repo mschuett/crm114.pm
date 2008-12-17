@@ -91,6 +91,11 @@ add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
 #crm114_staticscore_prob_spam  0.5
 #crm114_staticscore_spam       3.0
 
+# custom crm114 thresholds
+# default values are +/- 10
+crm114_good_threshold 5
+crm114_spam_threshold -5
+
 # should CRM114 be trained by SA?
 # If enabled, then a call to Mail::SpamAssassin->learn() or
 # "spamassassin --report/--revoke" also calls the CRM114 plugin.

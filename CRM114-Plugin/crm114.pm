@@ -103,7 +103,7 @@ use warnings "all";
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
 our @ISA = qw(Mail::SpamAssassin::Plugin);
-our $crm114_plugin_version = "0.7.5";
+our $crm114_plugin_version = "0.7.6";
 
 sub new {
   my ($class, $mailsa) = @_;
@@ -262,15 +262,16 @@ the SA required spam threshold (C<required_score>).
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
   });
 
-=item crm114_staticscore_good	n	(default: -3)
 
-=item crm114_staticscore_prob_good	n	(default: -0.5)
+=item crm114_staticscore_good   n   (default: -3)
 
-=item crm114_staticscore_unsure	n	(default: 0)
+=item crm114_staticscore_prob_good  n   (default: -0.5)
 
-=item crm114_staticscore_prob_spam	n	(default: 0.5)
+=item crm114_staticscore_unsure n   (default: 0)
 
-=item crm114_staticscore_spam	n	(default: 3)
+=item crm114_staticscore_prob_spam  n   (default: 0.5)
+
+=item crm114_staticscore_spam   n   (default: 3)
 
 Static scores for different classifications and scores.
 
@@ -279,12 +280,7 @@ Scores for good/spam are used according to CRM114's classification.
 On very short messages CRM114 often returns scores with
 the right sign (for spam/ham) but with a low absolute value
 because there are not enough tokens for sufficiently certain classification.
-
 The prob_good/prob_spam were introduced to benefit from these cases as well.
-The basic assumption is that CRM114 uses the default C<:thick_threshold:> of 10
-(i.e. classify if |crm-score| E<gt>= 10). The prob_good/prob_spam scores
-are used if 5 E<lt>= |crm-score| E<lt>= 10, leaving the unsure score
-for |crm-score| E<lt> 5.
 
 =cut
 
@@ -314,8 +310,32 @@ for |crm-score| E<lt> 5.
     type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
   });
 
-=item crm114_use_cacheid		(default: 0)
+=item crm114_good_threshold n   (default: 10)
 
+=item crm114_spam_threshold n   (default: -10)
+
+The good/spam thresholds as used by CRM114.
+
+mailreaver.crm allows one to set different thresholds for classification.
+crm114_good_threshold should be set to C<:good_threshold:> and
+crm114_spam_threshold to C<:spam_threshold:>.
+This plugin does not need these values to detect classified good/spam mails;
+but will use them only to determine its additional classes prob_good/prob_spam.
+
+=cut
+
+  push (@cmds, {
+    setting => 'crm114_good_threshold',
+    default => 10,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+  push (@cmds, {
+    setting => 'crm114_spam_threshold',
+    default => -10,
+    type => $Mail::SpamAssassin::Conf::CONF_TYPE_NUMERIC
+  });
+
+=item crm114_use_cacheid		(default: 0)
 
 Set to preserve the CRM114-CacheID for training.
 
@@ -631,6 +651,10 @@ sub check_crm {
   my ($self, $status) = @_;
 
   # Step 0: get options
+  my $crm114_good_threshold =
+          $self->{main}->{conf}->{crm114_good_threshold};
+  my $crm114_spam_threshold =
+          $self->{main}->{conf}->{crm114_spam_threshold};
   my $crm114_staticscore_good =
           $self->{main}->{conf}->{crm114_staticscore_good};
   my $crm114_staticscore_prob_good =
@@ -723,14 +747,14 @@ sub check_crm {
       }
       elsif ($crm114_status eq "UNSURE") {
         $status->{conf}->{descriptions}->{CRM114_UNSURE} = $description;
-        # basic assumption for 'probably'-cases: CRM114 unsure-threshold of +/- 10
-        if ($crm114_score <= -5) {
+        # 'probably'-cases: 0.5*$threshold <= x < $threshold
+        if ($crm114_score <= 0.5*$crm114_spam_threshold) {
           $status->{conf}->{scores}->{"CRM114_PROB_SPAM"} = $crm114_staticscore_prob_spam;
           $status->got_hit("CRM114_PROB_SPAM", "CRM114: ",
                        score => $crm114_staticscore_prob_spam, ruletype => "full");
           dbg(sprintf("crm114: score is %3.4f, returned CRM114_PROB_SPAM", $crm114_score));
         }
-        elsif ($crm114_score >= 5) {
+        elsif ($crm114_score >= 0.5*$crm114_good_threshold) {
           $status->{conf}->{scores}->{"CRM114_PROB_GOOD"} = $crm114_staticscore_prob_good;
           $status->got_hit("CRM114_PROB_GOOD", "CRM114: ",
                        score => $crm114_staticscore_prob_good, ruletype => "full");
@@ -846,6 +870,7 @@ sub autolearn {
  Version: 0.7.3, 080127 (typo in autolearn)
  Version: 0.7.4, 080301 (CLT08-Edition, fixed header filter, thanks to Thomas Mueller)
  Version: 0.7.5, 080421 (added lookup_crm114_cacheid, thanks to Thomas Mueller)
+ Version: 0.7.6, 081217 (added crm114_{good,spam}_threshold)
 
 =cut
 
