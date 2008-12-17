@@ -56,8 +56,16 @@ you will have to change that line before training from cache.
 Amavis-Notes:
 I use Amavis to call SpamAssassin. Here are patches to include the
 additional CRM114-Headers into every Mail:
-against amavisd-new-2.4.5: L<http://mschuette.name/files/amavisd.245.patch>,
-against amavisd-new-2.5.2: L<http://mschuette.name/files/amavisd.252.patch>.
+
+=over 1
+
+=item against amavisd-new-2.4.5: L<http://mschuette.name/files/amavisd.245.patch>,
+
+=item against amavisd-new-2.5.2: L<http://mschuette.name/files/amavisd.252.patch>,
+
+=item against amavisd-new-2.6.1: L<http://mschuette.name/files/amavisd.261.patch> (thanks to Jules M).
+
+=back
 
 =head1 AUTHOR & ACKNOWLEDGEMENT
 
