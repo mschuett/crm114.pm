@@ -71,7 +71,7 @@ Also borrowing from the C<Mail::SpamAssassin::Plugin>-modules.
 C<lookup_crm114_cacheid()> contributed by Thomas Mueller <thomas@chaschperli.ch>
 
 Everything else is
-Copyright 2007, Martin Schuette <info@mschuette.name>
+Copyright 2007-2008, Martin Schuette <info@mschuette.name>
 
 =head1 CRM114 INSTALLATION & CONFIGURATION
 
