@@ -1,0 +1,325 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Mail::SpamAssassin::Plugin::CRM114 - use CRM114 with SpamAssassin</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rev="made" href="mailto:info@mschuette.name" />
+</head>
+
+<body style="background-color: white">
+
+
+<!-- INDEX BEGIN -->
+<div name="index">
+<p><a name="__index__"></a></p>
+
+<ul>
+
+	<li><a href="#name">NAME</a></li>
+	<li><a href="#synopsis">SYNOPSIS</a></li>
+	<li><a href="#description">DESCRIPTION</a></li>
+	<li><a href="#features">FEATURES</a></li>
+	<li><a href="#notes_problems_todo">NOTES/PROBLEMS/TODO</a></li>
+	<li><a href="#author___acknowledgement">AUTHOR &amp; ACKNOWLEDGEMENT</a></li>
+	<li><a href="#crm114_installation___configuration">CRM114 INSTALLATION &amp; CONFIGURATION</a></li>
+	<li><a href="#plugin_configuration">PLUGIN CONFIGURATION</a></li>
+	<li><a href="#versions">VERSIONS</a></li>
+</ul>
+
+<hr name="index" />
+</div>
+<!-- INDEX END -->
+
+<p>
+</p>
+<h1><a name="name">NAME</a></h1>
+<p>Mail::SpamAssassin::Plugin::CRM114 - use CRM114 with SpamAssassin</p>
+<p>
+</p>
+<hr />
+<h1><a name="synopsis">SYNOPSIS</a></h1>
+<pre>
+  loadplugin     Mail::SpamAssassin::Plugin::CRM114</pre>
+<p>
+</p>
+<hr />
+<h1><a name="description">DESCRIPTION</a></h1>
+<p>This plugin uses the external program crm114 for classification.</p>
+<p>
+</p>
+<hr />
+<h1><a name="features">FEATURES</a></h1>
+<ul>
+<li>
+<p>adds template tags for custom header lines</p>
+</li>
+<li>
+<p>trains CRM114 on <code>spamassassin --report/--revoke</code></p>
+</li>
+<li>
+<p>optionally use static or dynamic spam-/ham-scores</p>
+</li>
+</ul>
+<p>
+</p>
+<hr />
+<h1><a name="notes_problems_todo">NOTES/PROBLEMS/TODO</a></h1>
+<p>If you use CRM114's cache then note that SA will only write headers
+beginning with <code>X-Spam-</code> but CRM114 looks for <code>X-CRM114-CacheID</code>.
+Training with <code>spamassassin --report</code>/<code>--revoke</code> should work
+(because this plugin handles the renaming) but otherwise
+you will have to change that line before training from cache.</p>
+<p>Amavis-Notes:
+I use Amavis to call SpamAssassin. Here are patches to include the
+additional CRM114-Headers into every Mail:</p>
+<dl>
+<dt><strong><a name="against_amavisd_new_2_4_5_http_mschuette_name_files_amavisd_245_patch" class="item">against amavisd-new-2.4.5: <a href="http://mschuette.name/files/amavisd.245.patch">http://mschuette.name/files/amavisd.245.patch</a>,</a></strong></dt>
+
+<dt><strong><a name="against_amavisd_new_2_5_2_http_mschuette_name_files_amavisd_252_patch" class="item">against amavisd-new-2.5.2: <a href="http://mschuette.name/files/amavisd.252.patch">http://mschuette.name/files/amavisd.252.patch</a>,</a></strong></dt>
+
+<dt><strong><a name="patch" class="item">against amavisd-new-2.6.1: <a href="http://mschuette.name/files/amavisd.261.patch">http://mschuette.name/files/amavisd.261.patch</a> (thanks to Jules M),</a></strong></dt>
+
+<dt><strong>against amavisd-new-2.6.2: <a href="http://mschuette.name/files/amavisd.262.patch">http://mschuette.name/files/amavisd.262.patch</a> (thanks to Mark M).</strong></dt>
+
+<dt><strong><a name="amavisd_new_2_6_3_no_longer_requires_these_patches" class="item">amavisd-new-2.6.3 no longer requires these patches</a></strong></dt>
+
+</dl>
+<p>
+</p>
+<hr />
+<h1><a name="author___acknowledgement">AUTHOR &amp; ACKNOWLEDGEMENT</a></h1>
+<p>Thanks to Tomas Charvat for testing.</p>
+<p>Initially based on plugin by Eugene Morozov.</p>
+<p>Also borrowing from the <code>Mail::SpamAssassin::Plugin</code>-modules.</p>
+<p><code>lookup_crm114_cacheid()</code> contributed by Thomas Mueller &lt;<a href="mailto:thomas@chaschperli.ch">thomas@chaschperli.ch</a>&gt;</p>
+<p>Many improvements contributed by Mark Martinec &lt;<a href="mailto:Mark.Martinec@ijs.si">Mark.Martinec@ijs.si</a>&gt;</p>
+<p>Everything else is
+Copyright 2007-2010, Martin Schuette &lt;<a href="mailto:info@mschuette.name">info@mschuette.name</a>&gt;</p>
+<p>
+</p>
+<hr />
+<h1><a name="crm114_installation___configuration">CRM114 INSTALLATION &amp; CONFIGURATION</a></h1>
+<p>To use this plugin you have to set up CRM114 so that you have these files:
+<em class="file">mailreaver.crm</em>, <em class="file">mailfilter.cf</em>, <em class="file">rewrites.mfp</em>, <em class="file">priolist.mfp</em>, and <em class="file">.CSS</em> files
+(see <a href="http://crm114.sourceforge.net/docs/CRM114_Mailfilter_HOWTO.txt">http://crm114.sourceforge.net/docs/CRM114_Mailfilter_HOWTO.txt</a> for details).</p>
+<p>The most important steps are:</p>
+<pre>
+    mkdir ~/.crm114
+    cp mailfilter.cf rewrites.mfp *.crm ~/.crm114
+    cd ~/.crm114
+    cssutil -b -r spam.css
+    cssutil -b -r nonspam.css
+    touch priolist.mfp
+    $EDITOR mailfilter.cf
+    $EDITOR rewrites.mfp</pre>
+<p>In <em class="file">mailfilter.cf</em> check the option <code>:add_headers: /yes/</code>!
+(and do not bother to change the <code>flag_subject_string</code> options --
+this plugin ignores them anyway)</p>
+<p>
+</p>
+<hr />
+<h1><a name="plugin_configuration">PLUGIN CONFIGURATION</a></h1>
+<p>To use this plugin you probably have to adjust the <code>crm114_command</code>.</p>
+<p>All other settings should have working default values,
+which are chosen to be cautionary and nonintrusive.</p>
+<dl>
+<dt><strong><a name="string" class="item">crm114_command string		(default: <code>crm -u ~/.crm114 mailreaver.crm</code>)</a></strong></dt>
+
+<dd>
+<p>The commandline used to execute CRM114.
+It is recommended to run mailreaver.crm and to use absolute paths only.</p>
+</dd>
+<dt><strong><a name="crm114_learn" class="item">crm114_learn	(0|1)	(default: 0)</a></strong></dt>
+
+<dd>
+<p>Set this if CRM114 should be trained by SA.</p>
+<p>If enabled, then a call to <code>Mail::SpamAssassin-&gt;learn()</code> or
+<code>spamassassin --report</code>/<code>--revoke</code> also calls the CRM114 plugin
+and lets CRM114 learn the mail as spam/ham.</p>
+</dd>
+<dt><strong><a name="crm114_autolearn" class="item">crm114_autolearn	(0|1)	(default: 0)</a></strong></dt>
+
+<dd>
+<p>Set this if CRM114 should be trained by SA's autolearn function.</p>
+<p>NB: This is different from <code>:automatic_training:</code> in CRM114's <code>mailfilter.cf</code>
+because SA's score is influenced by several different factors while
+CRM114 has to rely on its own classification.</p>
+<p>But anyway: Only activate this if you know what you are doing!
+In other words: it makes sense to enable autolearning only if non-learning
+SpamAssassin rules (without AWL and Bayes) are already well tuned and are
+known to provide good results,</p>
+</dd>
+<dt><strong><a name="crm114_remove_existing_spam_headers" class="item">crm114_remove_existing_spam_headers	(0|1)	(default: 0)</a></strong></dt>
+
+<dt><strong><a name="crm114_remove_existing_virus_headers" class="item">crm114_remove_existing_virus_headers	(0|1)	(default: 0)</a></strong></dt>
+
+<dd>
+<p>Set whether existing X-Spam or X-Virus headers are to be removed
+before classification.</p>
+<p>If SpamAssassin is called by Amavis then set the same value as Amavis does.
+That way a SA-check from Amavis and one from the command line both see
+the same headers.</p>
+</dd>
+<dt><strong><a name="crm114_dynscore" class="item">crm114_dynscore	(0|1)	(default: 0)</a></strong></dt>
+
+<dd>
+<p>Set to use a dynamic score, i.e. calculate a SA score from the CRM114 score.
+Otherwise the static scores are used.</p>
+</dd>
+<dt><strong><a name="crm114_dynscore_factor" class="item">crm114_dynscore_factor		(default: depends on SA <code>required_score</code>)</a></strong></dt>
+
+<dd>
+<p>Dynamic score scaling factor.</p>
+<p>With dynamic scoring the SA score is calculated by: CRM score * <a href="#crm114_dynscore_factor"><code>crm114_dynscore_factor</code></a></p>
+<p>Notes:</p>
+<ul>
+<li>
+<p>Keep in mind that CRM score have much higher absolute values
+and different signs than SA scores (usual ham-scores are between
+15 and 40, scores from -10 to 10 are undecided, previously seen
+spam easily gets -200).</p>
+</li>
+<li>
+<p>Thus this has to be a negative number!</p>
+</li>
+<li>
+<p>Thus the absolute value should be quite low (certainly &lt;0.3, probably &lt;=0.2),
+otherwise the returned score would override all other tests.</p>
+</li>
+</ul>
+<p>The default is to calculate this factor so that a CRM-score of -25 yields
+the SA required spam threshold (<code>required_score</code>).</p>
+</dd>
+<dt><strong><a name="n" class="item">crm114_staticscore_good   n   (default: -3)</a></strong></dt>
+
+<dt><strong>crm114_staticscore_prob_good  n   (default: -0.5)</strong></dt>
+
+<dt><strong>crm114_staticscore_unsure n   (default: 0)</strong></dt>
+
+<dt><strong>crm114_staticscore_prob_spam  n   (default: 0.5)</strong></dt>
+
+<dt><strong>crm114_staticscore_spam   n   (default: 3)</strong></dt>
+
+<dd>
+<p>Static scores for different classifications and scores.</p>
+<p>Scores for good/spam are used according to CRM114's classification.</p>
+<p>On very short messages CRM114 often returns scores with
+the right sign (for spam/ham) but with a low absolute value
+because there are not enough tokens for sufficiently certain classification.
+The prob_good/prob_spam were introduced to benefit from these cases as well.</p>
+</dd>
+<dt><strong>crm114_good_threshold n   (default: 10)</strong></dt>
+
+<dt><strong>crm114_spam_threshold n   (default: -10)</strong></dt>
+
+<dd>
+<p>The good/spam thresholds as used by CRM114.</p>
+<p>mailreaver.crm allows one to set different thresholds for classification.
+crm114_good_threshold should be set to <code>:good_threshold:</code> and
+crm114_spam_threshold to <code>:spam_threshold:</code>.
+This plugin does not need these values to detect classified good/spam mails;
+but will use them only to determine its additional classes prob_good/prob_spam.</p>
+<p>These settings override variables :good_threshold: and :spam_threshold:
+as used by mailreaver.crm and have their defaults set in mailfilter.cf.
+Thresholds delimit classification regions SPAM / UNSURE / GOOD based on
+CRM114 score (either by crm itself or by this plugin when --stats_only
+is used which only provides a score but not a status to the plugin).
+They are also used to determine additional classes prob_good/prob_spam
+when crm114_dynscore is false.
+default values are +10 for good threshold and -10 for spam threshold</p>
+</dd>
+<dt><strong><a name="crm114_use_cacheid" class="item">crm114_use_cacheid		(default: 0)</a></strong></dt>
+
+<dd>
+<p>Set to preserve the CRM114-CacheID for later training and store
+messages in a reaver cache.</p>
+<p>Enabling this adds additional processing as crm114 is expected to provide
+a rewritten message, and also causes reaver cache to grow, requiring periodic
+purging (not provided by the CRM114 system or this plugin).</p>
+<p>To use the cache enable it in <em class="file">mailfilter.cf</em>, set this option, and
+include the CacheID into all Mails with
+<code>add_header all CRM114-CacheID _CRM114CACHEID_</code></p>
+</dd>
+<dt><strong><a name="crm114_lookup_cacheid" class="item">crm114_lookup_cacheid                (default: 0)</a></strong></dt>
+
+<dd>
+<p>If crm114_use_cacheid is true and CRM114-CacheID is not found
+in the message, do a lookup in the reaver_cache/texts directory.</p>
+<p>Note that this can be expensive as the lookup needs to read mail header
+section from files in the cache directory successively until a message
+is found, so keep the number of files small by regularly purging a cache
+directory if you use this option.</p>
+<p>You also need to set crm114_cache_dir</p>
+</dd>
+<dt><strong><a name="crm114_cache_dir" class="item">crm114_cache_dir                (default: ~/.crm114/reaver_cache)</a></strong></dt>
+
+<dd>
+<p>Used to lookup cacheid if set crm114_lookup_cacheid. Needs to be set to
+reaver_cache/texts directory.</p>
+</dd>
+<dt><strong><a name="crm114_autodisable_score" class="item">crm114_autodisable_score		(default: 999)</a></strong></dt>
+
+<dt><strong><a name="crm114_autodisable_negative_score" class="item">crm114_autodisable_negative_score		(default: -999)</a></strong></dt>
+
+<dd>
+<p>Skip CRM114 check if a message already has
+a score &gt;= <a href="#crm114_autodisable_score"><code>crm114_autodisable_score</code></a> or
+a score &lt;= <a href="#crm114_autodisable_negative_score"><code>crm114_autodisable_negative_score</code></a>
+from other tests.</p>
+<p>This can be used if you think you have to save some CPU cycles and
+the number of messages reaching very high (or very low) SA scores is
+non-negligible, e.g. when white- or blacklisting is extensively used.</p>
+<p>In that case you will also want to set a priority for CRM114
+(e.g. <code>priority  CRM114_CHECK  899</code>). This ensures that other
+(less expensive) tests run first and accumulate some points.
+899 is recommended as an optimization because FuzzyOCR runs at 900;
+thus if CRM114 already yields a high SA score, then FuzzyOCR will decide
+to skip its tests (just like CRM114 might skip if the previous tests
+already got us <a href="#crm114_autodisable_score"><code>crm114_autodisable_score</code></a>).</p>
+<p>NB: Do not worry too much about performance and CPU costs, unless
+you know you are really CPU bound. (And not just waiting for
+your slow DNS server to reply.)</p>
+</dd>
+<dt><strong>crm114_timeout	n	(default: 10)</strong></dt>
+
+<dd>
+<p>Set timeout of <em>n</em> seconds to cancel an unresponsive CRM114 process.</p>
+</dd>
+</dl>
+<p>
+</p>
+<hr />
+<h1><a name="versions">VERSIONS</a></h1>
+<pre>
+ Version: 0.1, 070406
+ Version: 0.2, 070408
+ Version: 0.3, 070409
+ Version: 0.3.1, 070412 (fixed typo)
+ Version: 0.3.2, 070414 (checked documentation)
+ Version: 0.4, 070421 (added crm114_autolearn)
+ Version: 0.4.1, 070430 (fixed crm114_autolearn)
+ Version: 0.4.2, 070501 (fixed crm114_autolearn again)
+ Version: 0.4.3, 070506 (fixed crm114_autolearn again, now tested)
+ Version: 0.5, 070507 (works with SA 3.2.0)
+ Version: 0.6, 070514 (crm114_autodisable_score, omit test before learning)
+ Version: 0.6.1, 070516 (adjusted 'CRM and SA disagree' condition)
+ Version: 0.6.2, 070802 (fixed small bug, thanks to Rick Cooper)
+ Version: 0.6.3, 070815 (now trying to prevent zombie processes)
+ Version: 0.6.4, 070819 (use helper_app_pipe_open-code from Plugin::Pyzor)
+ Version: 0.6.5, 070821 (fixed bug in pipe_open-code, thanks to Robert Horton)
+ Version: 0.6.6, 070913 (fixed crm114_use_cacheid, added debug-tag)
+ Version: 0.6.7, 070927 (add score for unsure but probably spam/good, fix possibly uninitialized value)
+ Version: 0.7, 070928 (add POD documentation, considered stable)
+ Version: 0.7.1, 071230 (fix prob-cases, where score did not appear in Spam-Status)
+ Version: 0.7.2, 071230 (hopefully better error messages in case of process failure)
+ Version: 0.7.3, 080127 (typo in autolearn)
+ Version: 0.7.4, 080301 (CLT08-Edition, fixed header filter, thanks to Thomas Mueller)
+ Version: 0.7.5, 080421 (added lookup_crm114_cacheid, thanks to Thomas Mueller)
+ Version: 0.7.6, 081217 (added crm114_{good,spam}_threshold)
+ Version: 0.8.0, 090418 (lots of improvements, thanks to Mark Martinec)
+ Version: 0.8.1, 100607 (fix CRM114-Status regexp, thanks to Kevin Chua Soon Jia)</pre>
+
+</body>
+
+</html>
