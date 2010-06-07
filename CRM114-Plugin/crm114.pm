@@ -84,7 +84,7 @@ C<lookup_crm114_cacheid()> contributed by Thomas Mueller <thomas@chaschperli.ch>
 Many improvements contributed by Mark Martinec <Mark.Martinec@ijs.si>
 
 Everything else is
-Copyright 2007-2008, Martin Schuette <info@mschuette.name>
+Copyright 2007-2010, Martin Schuette <info@mschuette.name>
 
 =head1 CRM114 INSTALLATION & CONFIGURATION
 
@@ -120,7 +120,7 @@ use Mail::SpamAssassin::Timeout;
 use Mail::SpamAssassin::Util qw(untaint_file_path
                                 proc_status_ok exit_status_str);
 our @ISA = qw(Mail::SpamAssassin::Plugin);
-our $crm114_plugin_version = "0.8.0";
+our $crm114_plugin_version = "0.8.1";
 
 sub new {
   my ($class, $mailsa) = @_;
@@ -710,7 +710,7 @@ sub call_crm {
       $pms->set_tag("CRM114NOTICE", $1);
       dbg("crm114: found Notice ".$1);
     }
-    elsif (/^X-CRM114-Status: ([A-Z]+)\s+\(\s+([-\d\.]+)\s+\)/) {
+    elsif (/^X-CRM114-Status: ([A-Z]+)\s+\(\s*([-\d\.]+)\s*\)/) {
       if ($action eq "check") {
       	$crm114_status = $1;
       	$crm114_score = $2;
@@ -1031,5 +1031,6 @@ sub autolearn {
  Version: 0.7.5, 080421 (added lookup_crm114_cacheid, thanks to Thomas Mueller)
  Version: 0.7.6, 081217 (added crm114_{good,spam}_threshold)
  Version: 0.8.0, 090418 (lots of improvements, thanks to Mark Martinec)
+ Version: 0.8.1, 100607 (fix CRM114-Status regexp, thanks to Kevin Chua Soon Jia)
 
 =cut
