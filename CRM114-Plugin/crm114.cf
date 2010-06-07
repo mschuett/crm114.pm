@@ -81,7 +81,7 @@ add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
 # static scores
 # without dynamic scores these scores are used
 # default values are respectively -3, 3, -0.5, 0.5, and 0 for good, spam,
-# probably good, probably spam, and unsure good/spam depend on crm114's
+# probably good, probably spam, and unsure.  good/spam depend on crm114's
 # classification the probably good/spam values are used
 # for |crm114-score| >= 5 (i.e. a crm114-classification of unsure)
 # leaving |crm114-score| < 5 for 'really' unsure  
@@ -91,16 +91,18 @@ add_header all CRM114-Status _CRM114STATUS_ ( _CRM114SCORE_ )
 #crm114_staticscore_prob_spam  0.5
 #crm114_staticscore_spam       3.0
 
-# custom crm114 thresholds
-# default values are +/- 10
-crm114_good_threshold 5
-crm114_spam_threshold -5
+# custom crm114 thresholds; these settings override variables :good_threshold:
+# and :spam_threshold: in mailfilter.cf, and are also used to determine
+# additional classes prob_good/prob_spam when crm114_dynscore is false.
+# default values are +10 for good threshold and -10 for spam threshold
+#crm114_good_threshold  10
+#crm114_spam_threshold -10
 
 # should CRM114 be trained by SA?
 # If enabled, then a call to Mail::SpamAssassin->learn() or
 # "spamassassin --report/--revoke" also calls the CRM114 plugin.
 # Since CRM114 uses a "Train On Error" strategy the plugin will check the
-# reported mail and only learn it if it is not not classified correctly.
+# reported mail and only learn it if it is not classified correctly.
 # default: 0
 #crm114_learn 1
 
@@ -111,17 +113,32 @@ crm114_spam_threshold -5
 # because SA's score is influenced by several different factors while
 # CRM114 has to rely on its own classification. 
 # But anyway: Only activate this if you know what you're doing!
+# (in other words: if non-learning SA rules (without AWL and Bayes) are
+# already well tuned and are known to provide good results)
 # default: 0
-#crm114_autolearn 0
+#crm114_autolearn 1
 
-# should we preserve the CRM114-CacheID for training or discard it?
+# should we preserve the message and its CRM114-CacheID for training
+# or discard it?
 #
-# to use the cache enable it in mailfilter.cf, set this option, and 
+# to let CRM114 store messages into reaver_cache and use the cache for
+# manual learning enable it in mailfilter.cf, set this option, and
 # include the CacheID into all Mails with
 # "add_header all CRM114-CacheID _CRM114CACHEID_"
 # -- otherwise disable this option to strip CacheIDs before training
 # default: 0
 #crm114_use_cacheid 1
+
+# if both crm114_lookup_cacheid and crm114_use_cacheid are true
+# and CRM114-CacheID is not found in the message, do a lookup in the
+# reaver_cache/texts directory; crm114_cache_dir also needs to be set
+# default: 0
+#crm114_lookup_cacheid 1
+
+# a reaver_cache/texts directory used to lookup cacheid
+# if crm114_lookup_cacheid is set
+# default: ~/.crm114/reaver_cache
+#crm114_cache_dir path
 
 # should we skip CRM114 if other tests indicate certain spam/ham?
 #
