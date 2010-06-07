@@ -117,56 +117,10 @@ use re 'taint';
 use Mail::SpamAssassin::Plugin;
 use Mail::SpamAssassin::Logger;
 use Mail::SpamAssassin::Timeout;
-#use Mail::SpamAssassin::Util qw(untaint_file_path
-#                                proc_status_ok exit_status_str);
+use Mail::SpamAssassin::Util qw(untaint_file_path
+                                proc_status_ok exit_status_str);
 our @ISA = qw(Mail::SpamAssassin::Plugin);
 our $crm114_plugin_version = "0.8.0";
-
-#
-# exit_status_str() and proc_status_ok() are
-# additional functions as provided by SA 3.3
-#
-use POSIX qw(:sys_wait_h WIFEXITED WIFSIGNALED WIFSTOPPED WEXITSTATUS
-             WTERMSIG WSTOPSIG);
-#
-# map process termination status number to an informative string, and
-# append optional mesage (dual-valued errno or a string or a number),
-# returning the resulting string
-#
-sub exit_status_str($;$) {
-  my($stat,$errno) = @_;
-  my $str;
-  if (WIFEXITED($stat)) {
-    $str = sprintf("exit %d", WEXITSTATUS($stat));
-  } elsif (WIFSTOPPED($stat)) {
-    $str = sprintf("stopped, signal %d", WSTOPSIG($stat));
-  } else {
-    my $sig = WTERMSIG($stat);
-    $str = sprintf("%s, signal %d (%04x)",
-             $sig == 2 ? 'INTERRUPTED' : $sig == 6 ? 'ABORTED' :
-             $sig == 9 ? 'KILLED' : $sig == 15 ? 'TERMINATED' : 'DIED',
-             $sig, $stat);
-  }
-  if (defined $errno) {  # deal with dual-valued and plain variables
-    $str .= ', '.$errno  if (0+$errno) != 0 || ($errno ne '' && $errno ne '0');
-  }
-  return $str;
-}
-
-# check errno to be 0 and a process exit status to be in the list of success
-# status codes, returning true if both are ok, and false otherwise
-#
-sub proc_status_ok($;$@) {
-  my($exit_status,$errno,@success) = @_;
-  my $ok = 0;
-  if ((!defined $errno || $errno == 0) && WIFEXITED($exit_status)) {
-    my $j = WEXITSTATUS($exit_status);
-    if (!@success) { $ok = $j==0 }  # empty list implies only status 0 is good
-    elsif (grep {$_ == $j} @success) { $ok = 1 }
-  }
-  return $ok;
-}
-
 
 sub new {
   my ($class, $mailsa) = @_;
@@ -655,9 +609,8 @@ sub call_crm {
   push(@crm114_options, '--good_threshold='.$crm114_good_threshold);
   push(@crm114_options, '--spam_threshold='.$crm114_spam_threshold);
 
-  my $crm114_cmdline =
-    join(' ', Mail::SpamAssassin::Util::untaint_file_path($crm114_command),
-              @crm114_options);
+  my $crm114_cmdline = join(' ', untaint_file_path($crm114_command),
+                                 @crm114_options);
 
   dbg("crm114: call_crm() called, action: %s", $action);
 
