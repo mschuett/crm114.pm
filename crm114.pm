@@ -949,6 +949,45 @@ sub plugin_revoke {
   }
 }
 
+sub learn_message {
+  my ($self, $options) = @_;
+
+  dbg("crm114: learn_message() called");
+  return unless $self->{main}->{conf}->{crm114_learn};
+
+  my $timing = $self->{main}->UNIVERSAL::can("time_method") &&
+               $self->{main}->time_method("crm114_report");
+
+  my $pms = Mail::SpamAssassin::PerMsgStatus->new($self, $options->{msg});
+
+  my $isspam = $options->{isspam};
+
+  if($isspam) {
+    $self->call_crm($pms, "train_spam");
+
+    my $action = $pms->get_tag("CRM114ACTION");
+    if ($action eq "LEARNED AND CACHED SPAM") {
+      $options->{report}->{report_available} = 1;
+      $options->{report}->{report_return} = 1;
+      dbg("crm114: trained spam message");
+    }
+    else {
+      warn("crm114: error in training, unexpected Action: ".$action);
+    }
+  } else {
+      $self->call_crm($pms, "train_good");
+
+      my $action = $pms->get_tag("CRM114ACTION");
+      if ($action eq "LEARNED AND CACHED GOOD") {
+        $options->{revoke}->{revoke_available} = 1;
+        $options->{revoke}->{revoke_return} = 1;
+        dbg("crm114: trained ham/good message");
+      } else {
+        warn("crm114: error in training, unexpected Action: ".$action);
+      }
+  }
+}
+
 sub autolearn {
   my ($self, $options) = @_;
   my $pms = $options->{permsgstatus};
