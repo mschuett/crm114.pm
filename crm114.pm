@@ -658,7 +658,9 @@ sub call_crm {
   });
 
   # IMHO not strictly necessary, but be nice and clean
-  $pms->delete_fulltext_tmpfile();
+  # (delete our own $tmpf: without an argument this deletes the cached
+  # pristine fulltext tmpfile instead, which Pyzor/DCC may still need)
+  $pms->delete_fulltext_tmpfile($tmpf);
 
   if (defined(fileno(*CRM_OUT))) {  # still open
     if ($pid) {
